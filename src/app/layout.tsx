@@ -2,8 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ระบบตรวจนับสต็อกและคำนวณยอดสั่งซื้อขั้นต่ำ",
+  title: "Dino Stock Checker - ระบบตรวจนับสต็อกและสั่งซื้อสินค้า",
   description: "Stock Checker & Supplier Order System for Mobile & Desktop",
+  icons: {
+    icon: "/dino-logo.png",
+    apple: "/dino-logo.png",
+  },
 };
 
 export const viewport: Viewport = {

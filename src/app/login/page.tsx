@@ -4,7 +4,8 @@ import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PinKeypad } from "@/components/PinKeypad";
 import { loginWithPin } from "@/actions/auth";
-import { Store, ShieldCheck, Sparkles } from "lucide-react";
+import { ShieldCheck, Sparkles } from "lucide-react";
+import { DinoLogo } from "@/components/DinoLogo";
 
 function LoginForm() {
   const router = useRouter();
@@ -37,15 +38,18 @@ function LoginForm() {
     <div className="w-full flex flex-col items-center">
       {/* App Branding */}
       <div className="flex flex-col items-center mb-6 text-center">
-        <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-xl shadow-blue-500/25 mb-3 ring-4 ring-blue-50">
-          <Store className="w-8 h-8" />
+        <div className="relative mb-3">
+          <DinoLogo size={88} className="rounded-3xl shadow-xl shadow-emerald-500/20 ring-4 ring-emerald-50" />
+          <span className="absolute -bottom-1 -right-1 bg-amber-400 text-amber-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm border-2 border-white">
+            DINO
+          </span>
         </div>
-        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-          ตรวจนับสต็อก &amp; สั่งซื้อ
+        <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+          Dino Stock Checker
         </h1>
-        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-          <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
-          <span>Stock Checker &amp; Supplier Order System</span>
+        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 justify-center">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+          <span>ระบบตรวจนับสต็อก &amp; คำนวณยอดสั่งซื้อ</span>
         </p>
       </div>
 

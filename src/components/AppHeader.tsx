@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Package, KeyRound, LogOut, Loader2 } from "lucide-react";
+import { KeyRound, LogOut, Loader2 } from "lucide-react";
 import { PinSettingsModal } from "./PinSettingsModal";
 import { logoutAction } from "@/actions/auth";
+import { DinoLogo } from "./DinoLogo";
 
 export function AppHeader() {
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -38,15 +39,16 @@ export function AppHeader() {
         <div className="flex items-center justify-between">
           {/* Logo & Store Information */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
-              <Package className="w-5 h-5" />
-            </div>
+            <DinoLogo size={42} className="shadow-md shadow-emerald-600/15" />
             <div className="min-w-0">
-              <h1 className="text-sm font-bold text-slate-800 truncate leading-snug">
-                ระบบตรวจนับสต็อกสินค้า
+              <h1 className="text-sm font-extrabold text-slate-800 truncate leading-snug flex items-center gap-1">
+                <span>Dino Stock</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded-md">
+                  ตรวจนับสต็อก
+                </span>
               </h1>
               <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
                 <span className="truncate">{thaiDate || "โหลดวันที่..."}</span>
               </div>
             </div>
