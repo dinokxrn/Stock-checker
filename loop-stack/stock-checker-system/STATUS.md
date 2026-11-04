@@ -1,14 +1,14 @@
 # Status: stock-checker-system
 
-- **Phase:** Phase 5 - Outer Loop (Task 1 / [G1] Complete)
-- **Current Group:** [G1]
-- **Current Task:** [G1] Initialize Next.js 15 App with TypeScript and Tailwind CSS, configure Prisma SQLite schema with WAL mode (Setting, Supplier, Item, SnapshotArchive, SnapshotItem), and seed sample store data.
-- **Turns Used:** 1 / 20
-- **Task Progress:** 1 / 6 tasks completed (16.7%)
-- **Last Researcher Result:** Validated clean Next.js 15 direct configuration and Prisma SQLite schema with WAL mode and 5-supplier/30-item Thai grocery seed script.
-- **Last Executor Result:** Successfully scaffolded Next.js 15 with TypeScript, Tailwind CSS, Prisma SQLite schema with WAL mode, and seeded 5 suppliers and 30 grocery items. Verified with clean production build (`npm run build`).
-- **Last Audit Result:** CLEAN — Verified Next.js 15 App router, Prisma schema with WAL mode, secure PIN hashing, clean seed data (5 suppliers, 30 items), 0 lint errors, and successful production build.
-- **Last Verifier Result:** VERIFIED_PASS — Output verified in project root. Prisma SQLite schema verified in sync with WAL mode, 5 suppliers and 30 items seeded, default PIN hash verified, 0 placeholders/TODOs, edge cases tested, and production build succeeded. State: VERIFIED_PASS.
+- **Phase:** Phase 5 - Outer Loop (Tasks 2 & 3 / [G2])
+- **Current Group:** [G2]
+- **Current Tasks:**
+  1. Implement PIN Touch Keypad Authentication with session cookies, PIN management, and main mobile navigation layout.
+  2. Build Master Data management for Suppliers (with minimum order thresholds) and Items (with editable unit pricing and notes).
+- **Turns Used:** 2 / 20
+- **Last Researcher Result:** Completed research for both [G2] tasks: PIN Auth/Keypad/Navigation and Master Data CRUD with in-place price editing.
+- **Last Executor Result:** Successfully implemented Master Data management for Suppliers (minimum order thresholds, phone, notes) and Items (unit pricing, units, supplier relation, notes), with in-place price editing (`InlinePriceEditor`), full CRUD modals (`SupplierModal`, `ItemModal`), instant search/filter bar (`MasterFilterBar`), and `/master` route. Both `npm run build` and `npm run lint` passed with 0 errors.
 
 ## Active Heartbeats
-(idle)
+- executor: completed master data management task [G2]
+

@@ -87,3 +87,28 @@
 - **Recommendations for Next Tasks [G2-G4]:**
   - Extract `hashPin` into a dedicated auth helper (e.g. `src/lib/auth.ts`) so Server Actions in [G2] can share the exact salt and verification logic cleanly.
 
+
+
+## Task-Specific Research — PIN Auth & Navigation [G2]
+- **Auth Strategy:**
+  - Lightweight custom session cookie (`stock_session`, HttpOnly, 30-day maxAge) using Node.js crypto HMAC token, avoiding heavy third-party auth bloat.
+  - Next.js 15 compliance: `await cookies()` in Server Actions.
+  - Route guard in `src/middleware.ts` protecting main routes and redirecting unauthenticated users to `/login`.
+- **PIN Keypad Component (`src/components/PinKeypad.tsx`):**
+  - 3x4 grid with large touch buttons (min 64x64px), visual PIN dots indicator, and CSS `@keyframes shake` error animation.
+  - Physical keyboard event listener (0-9, Backspace, Enter, Esc).
+  - PIN Management modal to change PIN with current PIN verification.
+- **Mobile Navigation:**
+  - `BottomNav.tsx`: 4 tabs (Stock Count `/`, Order Dashboard `/dashboard`, Master Data `/master`, History `/history`).
+  - `AppHeader.tsx`: Store branding, route title, settings trigger, and logout.
+
+## Task-Specific Research — Master Data Management [G2]
+- **Server Actions (`src/actions/master-data.ts`):**
+  - Supplier CRUD: `createSupplier`, `updateSupplier`, `deleteSupplier` (with cascade warning).
+  - Item CRUD: `createItem`, `updateItem`, `deleteItem`.
+  - In-place price editor: `updateItemPrice(id, unitPrice)`.
+- **UI Components:**
+  - Segmented control between Items and Suppliers on `/master`.
+  - Search bar + horizontal supplier filter pills.
+  - In-place price editing via click on price badge with optimistic update and instant persistence.
+  - Supplier cards with minimum order threshold badge and contact info.
