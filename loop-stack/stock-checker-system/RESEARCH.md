@@ -73,3 +73,17 @@
   - `npx prisma db push` generates database tables in `prisma/dev.db`.
   - `npx tsx prisma/seed.ts` seeds 5 suppliers and 30 items.
   - `npm run build` succeeds without errors.
+
+## Audit Report — [G1]
+- **Audited Task:** [G1] Initialize Next.js 15 App with TypeScript and Tailwind CSS, configure Prisma SQLite schema with WAL mode (Setting, Supplier, Item, SnapshotArchive, SnapshotItem), and seed sample store data.
+- **Verdict:** CLEAN
+- **Audit Findings:**
+  1. **Next.js 15 & Toolchain Setup:** `package.json`, `tsconfig.json`, `next.config.ts`, `postcss.config.mjs`, and `eslint.config.mjs` are configured cleanly without redundant dependencies. Both `npm run build` and `npm run lint` pass with 0 errors and 0 warnings.
+  2. **Prisma & SQLite Schema Completeness:** `prisma/schema.prisma` implements all 5 specified models (`Setting`, `Supplier`, `Item`, `SnapshotArchive`, `SnapshotItem`) with appropriate indexing (`@@index([supplierId])`, `@@index([snapshotId])`) and cascade delete rules.
+  3. **Concurrency & WAL Mode:** Persistent WAL mode (`journal_mode = wal`) confirmed active on the SQLite database header. `src/lib/prisma.ts` correctly uses `prisma.$queryRawUnsafe` with error handling to enforce `PRAGMA synchronous = NORMAL;` and `PRAGMA journal_mode = WAL;` during connection initialization.
+  4. **Security & PIN Storage:** Seed script secures the default PIN (`1234`) using SHA-256 with salt before persisting to the `Setting` model (`af559...`).
+  5. **Data Quality & Coverage:** Seeded 5 authentic Thai suppliers and 30 items with appropriate Thai units (ลัง, แพ็ค, ถาด, ถุง, ขวด) and realistic pricing and minimum order amounts.
+  6. **Code Cleanliness & Mobile Baseline:** No placeholders, TODOs, or mock hacks found. Viewport configuration prevents iOS touch zoom (`maximumScale: 1, userScalable: false`) and establishes mobile container layout with Tailwind CSS.
+- **Recommendations for Next Tasks [G2-G4]:**
+  - Extract `hashPin` into a dedicated auth helper (e.g. `src/lib/auth.ts`) so Server Actions in [G2] can share the exact salt and verification logic cleanly.
+
