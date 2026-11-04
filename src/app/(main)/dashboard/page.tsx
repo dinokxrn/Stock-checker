@@ -1,16 +1,39 @@
 import React from "react";
-import { ShoppingCart } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import OrderDashboardView, { DashboardSupplier } from "@/components/dashboard/OrderDashboardView";
 
-export default function DashboardPage() {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center min-h-[60vh]">
-      <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 shadow-sm border border-amber-100">
-        <ShoppingCart className="w-7 h-7" />
-      </div>
-      <h2 className="text-lg font-bold text-slate-800">สรุปยอดสั่งซื้อ (Order Dashboard)</h2>
-      <p className="text-xs text-slate-500 max-w-xs mt-1">
-        คำนวณยอดสั่งซื้อสินค้าหมด (Out of Stock) เทียบกับยอดสั่งซื้อขั้นต่ำ และส่งออก LINE (ขั้นตอน [G3])
-      </p>
-    </div>
-  );
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  // Fetch suppliers and their associated items from SQLite database
+  const suppliers = await prisma.supplier.findMany({
+    include: {
+      items: {
+        orderBy: [{ status: "desc" }, { name: "asc" }],
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  // Ensure serialization into pure dashboard props
+  const sanitizedSuppliers: DashboardSupplier[] = suppliers.map((s) => ({
+    id: s.id,
+    name: s.name,
+    contactPhone: s.contactPhone,
+    note: s.note,
+    minOrderAmount: s.minOrderAmount,
+    items: s.items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      unit: i.unit,
+      unitPrice: i.unitPrice,
+      note: i.note,
+      status: i.status,
+      remain: i.remain,
+      ordered: i.ordered,
+      supplierId: i.supplierId,
+    })),
+  }));
+
+  return <OrderDashboardView initialSuppliers={sanitizedSuppliers} />;
 }

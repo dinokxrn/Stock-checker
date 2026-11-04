@@ -158,3 +158,20 @@
   6. **Next.js 15 Revalidation Safety:** Server actions implement a guarded `safeRevalidate()` mechanism that prevents `revalidatePath` crashes in non-request contexts (CLI and automated testing scripts).
   7. **Build & Quality Verification:** `npm run build` succeeds cleanly with 0 TypeScript/compilation errors (Route `/master` compiled dynamically at 9.73 kB, total shared JS 103 kB). `npm run lint` passes with 0 errors and 0 warnings. Automated tsx action test suite verified supplier fetch, item creation, price updates, and deletion.
 
+
+
+## Task-Specific Research — Stock Checking View [G3]
+- **Server Action (`src/actions/stock.ts`):**
+  - `updateItemStockStatus(itemId, status, remain, ordered)` with safe sanitization (clearing `ordered` on IN_STOCK/LOW_STOCK to prevent phantom order totals; defaulting `ordered` to >= 1 on OUT_OF_STOCK).
+- **UI Architecture (`src/components/stock/`):**
+  - `StockCheckingView.tsx`: Optimistic client state with 0ms UI response and debounced server synchronization.
+  - `StockItemCard.tsx`: 48px touch targets for 4 states (Slate, Emerald, Amber, Rose), dynamic inputs (Remain vs Ordered), quick stepper pills (+1, +5, +10, -1), instant line total ($\text{Unit Price} \times \text{Ordered}$).
+  - `StockFilterBar.tsx`: Item search, supplier chips, status filters, and live count progress banner.
+  - Floating count indicator linking to `/dashboard`.
+
+## Task-Specific Research — Order Summary Dashboard [G3]
+- **Dashboard Logic (`src/app/(main)/dashboard/page.tsx`, `OrderDashboardView.tsx`):**
+  - Aggregates strictly `status === 'OUT_OF_STOCK'` items grouped by supplier.
+  - Progress bar with 3 color tiers: Red (<50%), Amber (50-99%), Green (>=100%).
+  - Thai shortfall formatting: `ยอดสั่ง 3,450 / ขั้นต่ำ 5,000 บาท (ขาดอีก 1,550 บาท)`.
+  - "Copy to LINE" button generating cleanly formatted message with emojis, numbered items, and threshold status, plus mobile URL scheme deep-link.
