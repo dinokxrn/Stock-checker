@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Layers, RotateCcw } from "lucide-react";
+import { getSupplierScheduleStatus } from "@/lib/order-schedule";
 
 export interface StockStats {
   total: number;
@@ -19,7 +20,7 @@ interface StockFilterBarProps {
   onSupplierChange: (id: string) => void;
   selectedStatus: string;
   onStatusChange: (status: string) => void;
-  suppliers: Array<{ id: string; name: string }>;
+  suppliers: Array<{ id: string; name: string; orderDays?: string | null }>;
   supplierItemCounts: Record<string, number>;
   stats: StockStats;
   onOpenResetModal?: () => void;
@@ -182,6 +183,7 @@ export function StockFilterBar({
         {suppliers.map((s) => {
           const isSelected = selectedSupplierId === s.id;
           const count = supplierItemCounts[s.id] || 0;
+          const schedule = getSupplierScheduleStatus(s.orderDays);
           return (
             <button
               key={s.id}
@@ -190,10 +192,26 @@ export function StockFilterBar({
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all touch-manipulation min-h-[40px] border flex items-center gap-1.5 ${
                 isSelected
                   ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                  : schedule?.isToday
+                  ? "bg-rose-50/70 text-slate-800 border-rose-300 hover:bg-rose-100/70"
+                  : schedule?.isTomorrow
+                  ? "bg-amber-50/70 text-slate-800 border-amber-300 hover:bg-amber-100/70"
                   : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
               }`}
             >
+              {schedule?.isToday && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" title="รอบสั่งวันนี้!" />
+              )}
+              {schedule?.isTomorrow && (
+                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" title="รอบสั่งพรุ่งนี้!" />
+              )}
               <span>{s.name}</span>
+              {schedule?.isToday && !isSelected && (
+                <span className="text-[10px] font-black text-rose-600 bg-rose-100 px-1 rounded">วันนี้</span>
+              )}
+              {schedule?.isTomorrow && !isSelected && (
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1 rounded">พรุ่งนี้</span>
+              )}
               <span
                 className={`px-1.5 py-0.2 rounded-md text-[10px] ${
                   isSelected ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-600"

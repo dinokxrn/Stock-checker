@@ -18,6 +18,7 @@ export interface SupplierInput {
   contactPhone?: string | null;
   note?: string | null;
   minOrderAmount: number;
+  orderDays?: string | null;
 }
 
 export interface ItemInput {
@@ -65,6 +66,7 @@ export async function createSupplier(data: SupplierInput) {
         contactPhone: data.contactPhone?.trim() || null,
         note: data.note?.trim() || null,
         minOrderAmount: minAmount,
+        orderDays: data.orderDays?.trim() || null,
       },
     });
 
@@ -90,11 +92,13 @@ export async function updateSupplier(id: string, data: Partial<SupplierInput>) {
       contactPhone?: string | null;
       note?: string | null;
       minOrderAmount?: number;
+      orderDays?: string | null;
     } = {};
 
     if (data.name !== undefined) updateData.name = data.name.trim();
     if (data.contactPhone !== undefined) updateData.contactPhone = data.contactPhone?.trim() || null;
     if (data.note !== undefined) updateData.note = data.note?.trim() || null;
+    if (data.orderDays !== undefined) updateData.orderDays = data.orderDays?.trim() || null;
     if (data.minOrderAmount !== undefined) {
       updateData.minOrderAmount = Math.max(0, Number(data.minOrderAmount) || 0);
     }

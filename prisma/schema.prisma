@@ -19,6 +19,7 @@ model Supplier {
   contactPhone   String?
   note           String?
   minOrderAmount Float    @default(0)
+  orderDays      String?  // Comma-separated day numbers: 0=อา, 1=จ, 2=อ, 3=พ, 4=พฤ, 5=ศ, 6=ส
   items          Item[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

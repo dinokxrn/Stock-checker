@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { deleteSupplier } from "@/actions/master-data";
+import { getSupplierScheduleStatus } from "@/lib/order-schedule";
 import {
   Building2,
   Phone,
@@ -12,6 +13,7 @@ import {
   AlertTriangle,
   Loader2,
   FileText,
+  Calendar,
 } from "lucide-react";
 
 export interface SupplierItem {
@@ -20,6 +22,7 @@ export interface SupplierItem {
   contactPhone: string | null;
   note: string | null;
   minOrderAmount: number;
+  orderDays?: string | null;
   _count?: {
     items: number;
   };
@@ -103,6 +106,18 @@ export function SupplierList({
                       <Package className="w-3.5 h-3.5 text-slate-400" />
                       {itemCount} รายการสินค้า
                     </span>
+                    {(() => {
+                      const schedule = getSupplierScheduleStatus(supplier.orderDays);
+                      if (!schedule) return null;
+                      return (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${schedule.badgeClass}`}
+                        >
+                          <Calendar className="w-3 h-3" />
+                          <span>{schedule.badgeText}</span>
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

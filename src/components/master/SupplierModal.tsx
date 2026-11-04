@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createSupplier, updateSupplier, SupplierInput } from "@/actions/master-data";
-import { X, Building2, Phone, FileText, Banknote, Loader2 } from "lucide-react";
+import { X, Building2, Phone, FileText, Banknote, Loader2, Calendar } from "lucide-react";
 
 interface SupplierModalProps {
   isOpen: boolean;
@@ -14,8 +14,19 @@ interface SupplierModalProps {
     contactPhone: string | null;
     note: string | null;
     minOrderAmount: number;
+    orderDays?: string | null;
   } | null;
 }
+
+const ORDER_DAYS = [
+  { num: 1, label: "จันทร์", short: "จ." },
+  { num: 2, label: "อังคาร", short: "อ." },
+  { num: 3, label: "พุธ", short: "พ." },
+  { num: 4, label: "พฤหัส", short: "พฤ." },
+  { num: 5, label: "ศุกร์", short: "ศ." },
+  { num: 6, label: "เสาร์", short: "ส." },
+  { num: 0, label: "อาทิตย์", short: "อา." },
+];
 
 export function SupplierModal({
   isOpen,
@@ -28,6 +39,7 @@ export function SupplierModal({
   const [contactPhone, setContactPhone] = useState("");
   const [minOrderAmount, setMinOrderAmount] = useState("0");
   const [note, setNote] = useState("");
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,14 +49,30 @@ export function SupplierModal({
       setContactPhone(supplier.contactPhone || "");
       setMinOrderAmount(supplier.minOrderAmount.toString());
       setNote(supplier.note || "");
+      if (supplier.orderDays) {
+        const parsed = supplier.orderDays
+          .split(",")
+          .map((d) => parseInt(d.trim(), 10))
+          .filter((d) => !isNaN(d));
+        setSelectedDays(parsed);
+      } else {
+        setSelectedDays([]);
+      }
     } else {
       setName("");
       setContactPhone("");
       setMinOrderAmount("0");
       setNote("");
+      setSelectedDays([]);
     }
     setError(null);
   }, [supplier, isOpen]);
+
+  const toggleDay = (dayNum: number) => {
+    setSelectedDays((prev) =>
+      prev.includes(dayNum) ? prev.filter((d) => d !== dayNum) : [...prev, dayNum].sort()
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -69,6 +97,7 @@ export function SupplierModal({
       contactPhone: contactPhone.trim() || null,
       note: note.trim() || null,
       minOrderAmount: minAmount,
+      orderDays: selectedDays.length > 0 ? selectedDays.join(",") : null,
     };
 
     let result;
@@ -171,6 +200,41 @@ export function SupplierModal({
             </div>
             <p className="text-xs text-slate-500">
               ใช้สำหรับคำนวณแถบความคืบหน้า (Progress Bar) และแจ้งเตือนเมื่อยอดสั่งไม่ถึงเกณฑ์
+            </p>
+          </div>
+
+          {/* Order Days Selection */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-slate-700 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-indigo-600" />
+                <span>วันสั่งของประจำสัปดาห์ (Order Days)</span>
+              </span>
+              <span className="text-[11px] text-slate-400 font-normal">
+                {selectedDays.length > 0 ? `เลือก ${selectedDays.length} วัน` : "ยังไม่ได้ระบุ"}
+              </span>
+            </label>
+            <div className="grid grid-cols-7 gap-1.5 pt-1">
+              {ORDER_DAYS.map((day) => {
+                const isSelected = selectedDays.includes(day.num);
+                return (
+                  <button
+                    key={day.num}
+                    type="button"
+                    onClick={() => toggleDay(day.num)}
+                    className={`min-h-[44px] py-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center transition-all touch-manipulation border ${
+                      isSelected
+                        ? "bg-indigo-600 text-white border-indigo-700 shadow-sm scale-102"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 active:scale-95"
+                    }`}
+                  >
+                    <span>{day.short}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-slate-500">
+              แตะเลือกวันสั่งของเพื่อให้ระบบแจ้งเตือนอัตโนมัติเมื่อใกล้ถึงวันสั่งหรือถึงรอบสั่งของวันนี้
             </p>
           </div>
 

@@ -23,6 +23,8 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { updateItemStockStatus } from "@/actions/stock";
+import { OrderScheduleAlert } from "@/components/OrderScheduleAlert";
+import { getSupplierScheduleStatus } from "@/lib/order-schedule";
 
 export interface DashboardItem {
   id: string;
@@ -42,6 +44,7 @@ export interface DashboardSupplier {
   contactPhone?: string | null;
   note?: string | null;
   minOrderAmount: number;
+  orderDays?: string | null;
   items: DashboardItem[];
 }
 
@@ -344,6 +347,18 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
         </div>
       )}
 
+      {/* Approaching Order Day Alert Banner */}
+      <OrderScheduleAlert
+        suppliers={suppliers}
+        onSelectSupplier={(supplierId) => {
+          const s = suppliers.find((item) => item.id === supplierId);
+          if (s) {
+            setActiveTab("all");
+            setSearchQuery(s.name);
+          }
+        }}
+      />
+
       {/* Top Banner: Grand Summary */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-5 shadow-lg border border-slate-800 relative overflow-hidden">
         <div className="absolute right-0 top-0 -mt-4 -mr-4 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -523,6 +538,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             } = item;
 
             const isExpanded = !!expandedSuppliers[supplier.id];
+            const schedule = getSupplierScheduleStatus(supplier.orderDays);
             const hasOrders = outOfStockItems.length > 0;
             const hasAlerts = outOfStockItems.length > 0 || lowStockItems.length > 0;
             const cappedPercent = Math.min(100, Math.max(0, Math.round(progressPercent)));
@@ -561,6 +577,16 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
                           {supplier.note}
                         </p>
+                      )}
+
+                      {schedule && (
+                        <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border ${schedule.badgeClass}`}
+                          >
+                            {schedule.badgeText}
+                          </span>
+                        </div>
                       )}
                     </div>
 

@@ -30,6 +30,7 @@ export interface StockItem {
     id: string;
     name: string;
     minOrderAmount: number;
+    orderDays?: string | null;
   };
 }
 

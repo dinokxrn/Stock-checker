@@ -6,11 +6,12 @@ import { StockItemCard, StockItem } from "./StockItemCard";
 import { StockFilterBar, StockStats } from "./StockFilterBar";
 import { WeeklyResetModal } from "./WeeklyResetModal";
 import { updateItemStockStatus, StockStatus } from "@/actions/stock";
+import { OrderScheduleAlert } from "@/components/OrderScheduleAlert";
 import { ShoppingCart, PackageSearch, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface StockCheckingViewProps {
   initialItems: StockItem[];
-  suppliers: Array<{ id: string; name: string; minOrderAmount: number }>;
+  suppliers: Array<{ id: string; name: string; minOrderAmount: number; orderDays?: string | null }>;
 }
 
 export function StockCheckingView({ initialItems, suppliers }: StockCheckingViewProps) {
@@ -188,6 +189,12 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
           </button>
         </div>
       )}
+
+      {/* Approaching Order Day Alert Banner */}
+      <OrderScheduleAlert
+        suppliers={suppliers}
+        onSelectSupplier={(supplierId) => setSelectedSupplierId(supplierId)}
+      />
 
       {/* Filter and Progress Bar */}
       <StockFilterBar

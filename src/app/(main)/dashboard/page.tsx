@@ -22,6 +22,7 @@ export default async function DashboardPage() {
     contactPhone: s.contactPhone,
     note: s.note,
     minOrderAmount: s.minOrderAmount,
+    orderDays: s.orderDays,
     items: s.items.map((i) => ({
       id: i.id,
       name: i.name,
