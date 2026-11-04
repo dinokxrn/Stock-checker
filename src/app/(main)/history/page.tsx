@@ -1,16 +1,40 @@
 import React from "react";
-import { History } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import HistoryLogView, { SnapshotArchiveData } from "@/components/history/HistoryLogView";
 
-export default function HistoryPage() {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center min-h-[60vh]">
-      <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 shadow-sm border border-indigo-100">
-        <History className="w-7 h-7" />
-      </div>
-      <h2 className="text-lg font-bold text-slate-800">ประวัติการนับย้อนหลัง (History Log)</h2>
-      <p className="text-xs text-slate-500 max-w-xs mt-1">
-        ดูประวัติการนับสต็อกและ Snapshot ประจำสัปดาห์ที่บันทึกไว้ในฐานข้อมูล (ขั้นตอน [G4])
-      </p>
-    </div>
-  );
+export const dynamic = "force-dynamic";
+
+export default async function HistoryPage() {
+  const snapshots = await prisma.snapshotArchive.findMany({
+    include: {
+      items: {
+        orderBy: [{ supplierName: "asc" }, { itemName: "asc" }],
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const sanitizedSnapshots: SnapshotArchiveData[] = snapshots.map((s) => ({
+    id: s.id,
+    snapshotDate: s.snapshotDate.toISOString(),
+    note: s.note,
+    totalItemsChecked: s.totalItemsChecked,
+    totalOutOfStock: s.totalOutOfStock,
+    totalOrderAmount: s.totalOrderAmount,
+    createdAt: s.createdAt.toISOString(),
+    items: s.items.map((i) => ({
+      id: i.id,
+      snapshotId: i.snapshotId,
+      supplierName: i.supplierName,
+      itemName: i.itemName,
+      unit: i.unit,
+      unitPrice: i.unitPrice,
+      status: i.status,
+      remain: i.remain,
+      ordered: i.ordered,
+      lineTotal: i.lineTotal,
+    })),
+  }));
+
+  return <HistoryLogView initialSnapshots={sanitizedSnapshots} />;
 }

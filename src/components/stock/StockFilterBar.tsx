@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, X, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Layers } from "lucide-react";
+import { Search, X, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Layers, RotateCcw } from "lucide-react";
 
 export interface StockStats {
   total: number;
@@ -22,6 +22,7 @@ interface StockFilterBarProps {
   suppliers: Array<{ id: string; name: string }>;
   supplierItemCounts: Record<string, number>;
   stats: StockStats;
+  onOpenResetModal?: () => void;
 }
 
 export function StockFilterBar({
@@ -34,6 +35,7 @@ export function StockFilterBar({
   suppliers,
   supplierItemCounts,
   stats,
+  onOpenResetModal,
 }: StockFilterBarProps) {
   const percentChecked =
     stats.total > 0 ? Math.round((stats.checked / stats.total) * 100) : 0;
@@ -47,8 +49,21 @@ export function StockFilterBar({
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
             <span className="text-xs font-bold text-slate-700">ความคืบหน้าการตรวจนับ</span>
           </div>
-          <div className="text-xs font-extrabold text-blue-600">
-            {stats.checked} / {stats.total} รายการ ({percentChecked}%)
+          <div className="flex items-center gap-2">
+            <div className="text-xs font-extrabold text-blue-600">
+              {stats.checked} / {stats.total} รายการ ({percentChecked}%)
+            </div>
+            {onOpenResetModal && (
+              <button
+                type="button"
+                onClick={onOpenResetModal}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors flex items-center gap-1 touch-manipulation min-h-[36px]"
+                title="รีเซ็ตและจัดเก็บข้อมูลประจำสัปดาห์"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                <span>รีเซ็ต</span>
+              </button>
+            )}
           </div>
         </div>
 

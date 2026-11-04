@@ -4,8 +4,9 @@ import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { StockItemCard, StockItem } from "./StockItemCard";
 import { StockFilterBar, StockStats } from "./StockFilterBar";
+import { WeeklyResetModal } from "./WeeklyResetModal";
 import { updateItemStockStatus, StockStatus } from "@/actions/stock";
-import { ShoppingCart, PackageSearch, ArrowRight, AlertCircle } from "lucide-react";
+import { ShoppingCart, PackageSearch, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface StockCheckingViewProps {
   initialItems: StockItem[];
@@ -18,6 +19,24 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
   const [selectedSupplierId, setSelectedSupplierId] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [successBanner, setSuccessBanner] = useState<string | null>(null);
+
+  const handleResetSuccess = useCallback(() => {
+    // Reset all items locally to NONE
+    setItems((prevList) =>
+      prevList.map((item) => ({
+        ...item,
+        status: "NONE",
+        remain: null,
+        ordered: null,
+      }))
+    );
+    setSuccessBanner("จัดเก็บประวัติและรีเซ็ตสต็อกทั้งหมดเรียบร้อยแล้ว (สามารถดูย้อนหลังได้ที่เมนูประวัติ)");
+    setTimeout(() => {
+      setSuccessBanner(null);
+    }, 5000);
+  }, []);
 
   // Calculate live statistics across all items
   const stats: StockStats = useMemo(() => {
@@ -155,6 +174,21 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
         </div>
       )}
 
+      {/* Success Notification Banner */}
+      {successBanner && (
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-2 animate-fade-in shadow-sm">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span className="flex-1">{successBanner}</span>
+          <button
+            type="button"
+            onClick={() => setSuccessBanner(null)}
+            className="text-emerald-700 hover:text-emerald-900 font-bold underline"
+          >
+            ปิด
+          </button>
+        </div>
+      )}
+
       {/* Filter and Progress Bar */}
       <StockFilterBar
         searchQuery={searchQuery}
@@ -166,6 +200,7 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
         suppliers={suppliers}
         supplierItemCounts={supplierItemCounts}
         stats={stats}
+        onOpenResetModal={() => setIsResetModalOpen(true)}
       />
 
       {/* Filter Status Badge & Result Count */}
@@ -246,6 +281,14 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
           </Link>
         </div>
       </div>
+
+      {/* Weekly Reset Confirmation Modal */}
+      <WeeklyResetModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        stats={stats}
+        onResetSuccess={handleResetSuccess}
+      />
     </div>
   );
 }

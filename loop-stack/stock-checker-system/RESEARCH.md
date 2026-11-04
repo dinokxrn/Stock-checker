@@ -246,3 +246,25 @@
      - `tests/dashboard-integration.test.ts` passed (database queries, multi-item line total sum, supplier grouping).
      - `npm run lint` passed with 0 errors and 0 warnings.
      - `npm run build` completed cleanly with exit code 0 (Route `/dashboard` dynamic size: 7.3 kB, shared JS: 103 kB).
+
+
+## Task-Specific Research — Weekly Reset & History Log [G4]
+- **Server Action (`src/actions/snapshot.ts`):**
+  - `archiveAndResetWeeklyStock(note?: string)`:
+    - Runs inside an atomic `prisma.$transaction`.
+    - Computes snapshot metrics (`totalItemsChecked`, `totalOutOfStock`, `totalOrderAmount`).
+    - Creates `SnapshotArchive` and itemized `SnapshotItem` records freezing item names, supplier names, units, and unit prices.
+    - Updates all live items to `status: "NONE", remain: null, ordered: null`.
+    - Triggers `safeRevalidate()` for `/`, `/dashboard`, and `/history`.
+  - `getSnapshotsAction()`: Retrieves past snapshots with item relations.
+  - `deleteSnapshotAction(snapshotId)`: Cascading delete for past snapshots.
+- **Weekly Reset Modal (`src/components/stock/WeeklyResetModal.tsx`):**
+  - Integrated into `/` (Stock Checking View).
+  - Displays checked count, out-of-stock items, total order value.
+  - Optional memo note input for the owner.
+  - Double confirmation buttons with min 48px touch targets.
+- **History View (`src/components/history/HistoryLogView.tsx`, `src/app/(main)/history/page.tsx`):**
+  - Snapshot cards in Thai Buddhist date format.
+  - Accordion detail grouped by supplier with frozen prices and line totals.
+  - UTF-8 BOM CSV export (`\uFEFF`) for Thai Excel compatibility.
+  - "Copy to LINE" / copy summary text button for re-exporting past orders.

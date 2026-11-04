@@ -126,6 +126,86 @@ async function main() {
     },
   });
 
+  // 6. Seed a realistic sample past Snapshot Archive for demonstration in History Log
+  const pastDate = new Date();
+  pastDate.setDate(pastDate.getDate() - 7);
+
+  await prisma.snapshotArchive.create({
+    data: {
+      snapshotDate: pastDate,
+      note: "รอบนับสต็อกประจำสัปดาห์ที่แล้ว (สัปดาห์สิ้นเดือน)",
+      totalItemsChecked: 28,
+      totalOutOfStock: 4,
+      totalOrderAmount: 4890,
+      createdAt: pastDate,
+      items: {
+        create: [
+          {
+            supplierName: makro.name,
+            itemName: "น้ำดื่มสิงห์ 600ml (แพ็ค 12 ขวด)",
+            unit: "แพ็ค",
+            unitPrice: 48,
+            status: "OUT_OF_STOCK",
+            remain: 0,
+            ordered: 20,
+            lineTotal: 960,
+          },
+          {
+            supplierName: makro.name,
+            itemName: "น้ำมันพืชปาล์ม มรกต 1 ลิตร (ลัง 12 ขวด)",
+            unit: "ลัง",
+            unitPrice: 560,
+            status: "OUT_OF_STOCK",
+            remain: 0,
+            ordered: 3,
+            lineTotal: 1680,
+          },
+          {
+            supplierName: boonrawd.name,
+            itemName: "สิงห์ โซดา 325ml (ถาด 24 ขวด)",
+            unit: "ถาด",
+            unitPrice: 215,
+            status: "OUT_OF_STOCK",
+            remain: 0,
+            ordered: 5,
+            lineTotal: 1075,
+          },
+          {
+            supplierName: mama.name,
+            itemName: "มาม่า บะหมี่กึ่งสำเร็จรูป รสต้มยำกุ้ง (ลัง 30 ซอง)",
+            unit: "ลัง",
+            unitPrice: 195,
+            status: "OUT_OF_STOCK",
+            remain: 0,
+            ordered: 6,
+            lineTotal: 1175,
+          },
+          {
+            supplierName: osotspa.name,
+            itemName: "เอ็ม-150 150ml (แพ็ค 10 ขวด)",
+            unit: "แพ็ค",
+            unitPrice: 105,
+            status: "IN_STOCK",
+            remain: 8,
+            ordered: null,
+            lineTotal: 0,
+          },
+          {
+            supplierName: unilever.name,
+            itemName: "บรีส เอกเซล ผงซักฟอก 800g (ลัง 12 ถุง)",
+            unit: "ลัง",
+            unitPrice: 690,
+            status: "LOW_STOCK",
+            remain: 1,
+            ordered: null,
+            lineTotal: 0,
+          },
+        ],
+      },
+    },
+  });
+  console.log("✅ Seeded sample historical weekly snapshot for testing.");
+
   console.log(`✅ Seeded 5 suppliers (${makro.name}, ${boonrawd.name}, ${mama.name}, ${osotspa.name}, ${unilever.name}) with 30 items.`);
 }
 
