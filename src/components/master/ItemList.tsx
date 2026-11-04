@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { deleteItem } from "@/actions/master-data";
-import { InlinePriceEditor } from "./InlinePriceEditor";
 import {
   Package,
   Building2,
@@ -123,28 +122,21 @@ export function ItemList({ items, onEdit, onRefresh }: ItemListProps) {
             </div>
           </div>
 
-          {/* Middle row: Price Inline Editor and Unit */}
+          {/* Middle row: Unit and Details */}
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-            <div className="flex flex-col">
-              <span className="text-[11px] font-medium text-slate-400 mb-0.5">
-                ราคาต่อหน่วย (แตะเพื่อแก้ได้ทันที)
-              </span>
-              <InlinePriceEditor
-                itemId={item.id}
-                initialPrice={item.unitPrice}
-                unit={item.unit}
-                onPriceUpdated={() => onRefresh()}
-              />
-            </div>
-
-            <div className="text-right">
-              <span className="text-[11px] font-medium text-slate-400 block">
-                หน่วยนับ
-              </span>
-              <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold">
+            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+              <span className="text-[11px] font-medium text-slate-400">หน่วยนับ:</span>
+              <span className="px-2.5 py-0.5 rounded-md bg-slate-100 font-semibold text-slate-700">
                 {item.unit}
               </span>
             </div>
+
+            {item.note && (
+              <div className="flex items-center gap-1 text-xs text-slate-500 truncate max-w-[200px]">
+                <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate">{item.note}</span>
+              </div>
+            )}
           </div>
 
           {/* Note if available */}

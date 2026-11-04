@@ -265,16 +265,19 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
       <div className="fixed bottom-16 left-0 right-0 z-30 max-w-md mx-auto px-4 pb-2 pointer-events-none">
         <div className="bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-xl border border-slate-700/60 flex items-center justify-between pointer-events-auto">
           <div className="min-w-0 pr-2">
-            <div className="flex items-center gap-1.5 text-xs text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-              <span>ต้องสั่งซื้อ:</span>
-              <strong className="text-white font-bold">{stats.outOfStock} รายการ</strong>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="flex items-center gap-1 text-rose-400 font-bold">
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                สินค้าหมด: {stats.outOfStock}
+              </span>
+              <span className="text-slate-500">•</span>
+              <span className="flex items-center gap-1 text-amber-400 font-semibold">
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                ใกล้หมด: {stats.lowStock}
+              </span>
             </div>
-            <div className="text-base font-extrabold text-white tracking-tight">
-              ฿{stats.totalOrderAmount.toLocaleString("th-TH", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+            <div className="text-sm font-extrabold text-white tracking-tight mt-0.5">
+              ตรวจแล้ว {stats.checked} / {stats.total} รายการ
             </div>
           </div>
 
@@ -283,7 +286,7 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
             className="min-h-[44px] px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/30 transition-all shrink-0 touch-manipulation"
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>ดูสรุปยอด</span>
+            <span>ดูรายการสั่งซื้อ</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

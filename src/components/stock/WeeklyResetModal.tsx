@@ -133,14 +133,26 @@ export function WeeklyResetModal({
               </div>
             </div>
 
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
-              <span className="text-slate-500 text-xs">ยอดสั่งซื้อรวมทั้งหมด:</span>
-              <span className="text-base font-black text-slate-900">
-                ฿{stats.totalOrderAmount.toLocaleString("th-TH", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
+                <div className="text-slate-500 text-[11px] flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  <span>มีพอในสต็อก</span>
+                </div>
+                <div className="text-sm font-extrabold text-emerald-700 mt-0.5">
+                  {stats.inStock} รายการ
+                </div>
+              </div>
+
+              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
+                <div className="text-slate-500 text-[11px] flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-amber-600" />
+                  <span>สินค้าใกล้หมด</span>
+                </div>
+                <div className="text-sm font-extrabold text-amber-700 mt-0.5">
+                  {stats.lowStock} รายการ
+                </div>
+              </div>
             </div>
           </div>
 

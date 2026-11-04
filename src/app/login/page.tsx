@@ -57,7 +57,7 @@ function LoginForm() {
               </h1>
               <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 justify-center">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>ระบบตรวจนับสต็อก &amp; คำนวณยอดสั่งซื้อ</span>
+                <span>ระบบตรวจนับสต็อกสินค้า</span>
               </p>
             </div>
           }

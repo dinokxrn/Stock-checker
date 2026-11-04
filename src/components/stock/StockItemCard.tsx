@@ -125,10 +125,6 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
     commitUpdate("OUT_OF_STOCK", 0, localOrdered);
   };
 
-  // Instant Line Total: Unit Price * Ordered Quantity
-  const lineTotal =
-    localStatus === "OUT_OF_STOCK" ? item.unitPrice * (localOrdered || 1) : 0;
-
   // Card theme classes based on status
   const cardBorderClass = {
     NONE: "border-slate-200/90 bg-white",
@@ -172,9 +168,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
 
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold">
               <Tag className="w-3 h-3 text-slate-500" />
-              <span>
-                ฿{item.unitPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 })} / {item.unit}
-              </span>
+              <span>หน่วย: {item.unit}</span>
             </span>
 
             {item.note && (
@@ -384,21 +378,6 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                 +{step}
               </button>
             ))}
-          </div>
-
-          {/* Instant Line Total Display */}
-          <div className="flex items-center justify-between pt-2 border-t border-rose-200/80">
-            <div className="text-[11px] text-slate-500 font-medium">
-              ฿{item.unitPrice.toLocaleString("th-TH")} × {localOrdered} {item.unit}
-            </div>
-            <div className="text-right">
-              <span className="text-[11px] text-rose-600 font-semibold mr-1.5">
-                ยอดรวมรายการนี้:
-              </span>
-              <span className="text-base font-extrabold text-rose-700">
-                ฿{lineTotal.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
           </div>
         </div>
       )}

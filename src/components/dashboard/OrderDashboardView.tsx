@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useTransition } from "react";
 import Link from "next/link";
 import {
-  ShoppingCart,
   Copy,
   Check,
   ExternalLink,
@@ -52,41 +51,7 @@ interface OrderDashboardViewProps {
   initialSuppliers: DashboardSupplier[];
 }
 
-type FilterTab = "active" | "below_min" | "met_min" | "all";
-type TierColor = "red" | "amber" | "green";
-
-const TIER_STYLES: Record<
-  TierColor,
-  {
-    bar: string;
-    badge: string;
-    iconText: string;
-    borderGlow: string;
-    progressBg: string;
-  }
-> = {
-  red: {
-    bar: "bg-rose-500",
-    badge: "bg-rose-50 text-rose-700 border-rose-200",
-    iconText: "text-rose-500",
-    borderGlow: "border-slate-200/80",
-    progressBg: "bg-rose-100",
-  },
-  amber: {
-    bar: "bg-amber-500",
-    badge: "bg-amber-50 text-amber-700 border-amber-200",
-    iconText: "text-amber-500",
-    borderGlow: "border-slate-200/80",
-    progressBg: "bg-amber-100",
-  },
-  green: {
-    bar: "bg-emerald-500",
-    badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    iconText: "text-emerald-500",
-    borderGlow: "border-emerald-200/80",
-    progressBg: "bg-emerald-100",
-  },
-};
+type FilterTab = "active" | "out_of_stock" | "low_stock" | "all";
 
 export default function OrderDashboardView({ initialSuppliers }: OrderDashboardViewProps) {
   const [suppliers, setSuppliers] = useState<DashboardSupplier[]>(initialSuppliers);
@@ -97,14 +62,6 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   const [previewSupplier, setPreviewSupplier] = useState<DashboardSupplier | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-
-  // Format Thai currency
-  const formatBaht = (amount: number) => {
-    return `฿${amount.toLocaleString("th-TH", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`;
-  };
 
   // Toggle accordion expand/collapse
   const toggleExpand = (supplierId: string) => {
@@ -239,72 +196,40 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     return suppliers.map((supplier) => {
       const outOfStockItems = supplier.items.filter((item) => item.status === "OUT_OF_STOCK");
       const lowStockItems = supplier.items.filter((item) => item.status === "LOW_STOCK");
-      const totalOrderAmount = outOfStockItems.reduce((sum, item) => {
-        const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
-        return sum + item.unitPrice * qty;
-      }, 0);
-
-      const minOrderAmount = supplier.minOrderAmount || 0;
-      let progressPercent = 0;
-      if (minOrderAmount > 0) {
-        progressPercent = (totalOrderAmount / minOrderAmount) * 100;
-      } else if (totalOrderAmount > 0) {
-        progressPercent = 100;
-      }
-
-      const isMet = minOrderAmount <= 0 ? totalOrderAmount > 0 : totalOrderAmount >= minOrderAmount;
-      const shortfall = minOrderAmount > totalOrderAmount ? minOrderAmount - totalOrderAmount : 0;
-      const surplus = totalOrderAmount > minOrderAmount ? totalOrderAmount - minOrderAmount : 0;
-
-      // 3-Tier Progress Bar Color System:
-      // Red (<50%), Amber (50-99.99%), Green (>=100%)
-      let tierColor: TierColor = "red";
-      if (progressPercent >= 100) {
-        tierColor = "green";
-      } else if (progressPercent >= 50) {
-        tierColor = "amber";
-      } else {
-        tierColor = "red";
-      }
+      const hasAlerts = outOfStockItems.length > 0 || lowStockItems.length > 0;
 
       return {
         supplier,
         outOfStockItems,
         lowStockItems,
-        totalOrderAmount,
-        minOrderAmount,
-        progressPercent,
-        isMet,
-        shortfall,
-        surplus,
-        tierColor,
+        hasAlerts,
       };
     });
   }, [suppliers]);
 
   // Overall store summary
   const grandSummary = useMemo(() => {
-    let grandTotal = 0;
-    let totalItemsToOrder = 0;
+    let totalOutOfStock = 0;
+    let totalLowStock = 0;
     let suppliersWithOrdersCount = 0;
-    let suppliersMetCount = 0;
+    let suppliersWithAlertsCount = 0;
 
     supplierMetrics.forEach((m) => {
+      totalOutOfStock += m.outOfStockItems.length;
+      totalLowStock += m.lowStockItems.length;
       if (m.outOfStockItems.length > 0) {
-        grandTotal += m.totalOrderAmount;
-        totalItemsToOrder += m.outOfStockItems.length;
         suppliersWithOrdersCount += 1;
-        if (m.isMet) {
-          suppliersMetCount += 1;
-        }
+      }
+      if (m.hasAlerts) {
+        suppliersWithAlertsCount += 1;
       }
     });
 
     return {
-      grandTotal,
-      totalItemsToOrder,
+      totalOutOfStock,
+      totalLowStock,
       suppliersWithOrdersCount,
-      suppliersMetCount,
+      suppliersWithAlertsCount,
       totalSuppliers: suppliers.length,
     };
   }, [supplierMetrics, suppliers.length]);
@@ -313,22 +238,24 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   const filteredMetrics = useMemo(() => {
     return supplierMetrics.filter((m) => {
       // Tab filter
-      if (activeTab === "active" && m.outOfStockItems.length === 0) {
+      if (activeTab === "active" && !m.hasAlerts) {
         return false;
       }
-      if (activeTab === "below_min") {
-        if (m.outOfStockItems.length === 0 || m.isMet) return false;
+      if (activeTab === "out_of_stock" && m.outOfStockItems.length === 0) {
+        return false;
       }
-      if (activeTab === "met_min") {
-        if (m.outOfStockItems.length === 0 || !m.isMet) return false;
+      if (activeTab === "low_stock" && m.lowStockItems.length === 0) {
+        return false;
       }
 
       // Search query filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
         const matchesSupplier = m.supplier.name.toLowerCase().includes(query);
-        const matchesItem = m.outOfStockItems.some((item) =>
-          item.name.toLowerCase().includes(query)
+        const matchesItem = m.supplier.items.some(
+          (item) =>
+            (item.status === "OUT_OF_STOCK" || item.status === "LOW_STOCK") &&
+            item.name.toLowerCase().includes(query)
         );
         if (!matchesSupplier && !matchesItem) return false;
       }
@@ -366,14 +293,14 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
-              <ShoppingCart className="w-4 h-4" />
+              <ClipboardList className="w-4 h-4" />
             </div>
             <div>
               <h1 className="text-base font-bold text-white leading-tight">
-                สรุปยอดสั่งซื้อสินค้าหมด
+                สรุปรายการสั่งซื้อและสต็อก
               </h1>
               <p className="text-[11px] text-slate-400">
-                เปรียบเทียบยอดสั่งซื้อกับเกณฑ์ขั้นต่ำรายบริษัท
+                รายการสินค้าที่ต้องสั่งซื้อและใกล้หมด แยกตามรายบริษัทคู่ค้า
               </p>
             </div>
           </div>
@@ -385,29 +312,28 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
         {/* Big Numbers Grid */}
         <div className="grid grid-cols-2 gap-3 pt-2">
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
-            <span className="text-[11px] text-slate-400 block mb-0.5">ยอดสั่งซื้อรวมทั้งหมด</span>
-            <div className="text-xl sm:text-2xl font-extrabold text-amber-400 tracking-tight">
-              {formatBaht(grandSummary.grandTotal)}
+            <span className="text-[11px] text-rose-300 font-semibold block mb-0.5 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+              สินค้าหมด (ต้องสั่ง)
+            </span>
+            <div className="text-2xl sm:text-3xl font-extrabold text-rose-400 tracking-tight">
+              {grandSummary.totalOutOfStock} <span className="text-xs font-normal text-slate-300">รายการ</span>
             </div>
             <div className="text-[10px] text-slate-400 mt-1">
-              สินค้าหมด {grandSummary.totalItemsToOrder} รายการ
+              จาก {grandSummary.suppliersWithOrdersCount} บริษัทคู่ค้า
             </div>
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
-            <span className="text-[11px] text-slate-400 block mb-0.5">คู่ค้าที่ถึงเกณฑ์ขั้นต่ำ</span>
-            <div className="text-xl sm:text-2xl font-extrabold text-emerald-400 tracking-tight">
-              {grandSummary.suppliersMetCount}
-              <span className="text-xs font-normal text-slate-400 ml-1">
-                / {grandSummary.suppliersWithOrdersCount} บริษัท
-              </span>
+            <span className="text-[11px] text-amber-300 font-semibold block mb-0.5 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              สินค้าใกล้หมด
+            </span>
+            <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 tracking-tight">
+              {grandSummary.totalLowStock} <span className="text-xs font-normal text-slate-300">รายการ</span>
             </div>
             <div className="text-[10px] text-slate-400 mt-1">
-              {grandSummary.suppliersWithOrdersCount - grandSummary.suppliersMetCount > 0
-                ? `ยังขาดอีก ${grandSummary.suppliersWithOrdersCount - grandSummary.suppliersMetCount} บริษัท`
-                : grandSummary.suppliersWithOrdersCount > 0
-                ? "ครบยอดขั้นต่ำทุกเจ้าแล้ว 🎉"
-                : "ยังไม่มีรายการสั่งซื้อ"}
+              สต็อกเหลือน้อย ควรเตรียมสั่งเพิ่ม
             </div>
           </div>
         </div>
@@ -445,29 +371,29 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
             }`}
           >
-            เฉพาะที่มีออเดอร์ ({grandSummary.suppliersWithOrdersCount})
+            มีสินค้าต้องสั่ง/ใกล้หมด ({grandSummary.suppliersWithAlertsCount})
           </button>
 
           <button
-            onClick={() => setActiveTab("below_min")}
+            onClick={() => setActiveTab("out_of_stock")}
             className={`min-h-[38px] px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all touch-manipulation ${
-              activeTab === "below_min"
+              activeTab === "out_of_stock"
+                ? "bg-rose-600 text-white shadow-sm"
+                : "bg-white text-rose-700 border border-rose-200 hover:bg-rose-50"
+            }`}
+          >
+            เฉพาะสินค้าหมด ({grandSummary.suppliersWithOrdersCount})
+          </button>
+
+          <button
+            onClick={() => setActiveTab("low_stock")}
+            className={`min-h-[38px] px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all touch-manipulation ${
+              activeTab === "low_stock"
                 ? "bg-amber-600 text-white shadow-sm"
                 : "bg-white text-amber-700 border border-amber-200 hover:bg-amber-50"
             }`}
           >
-            ยังไม่ถึงขั้นต่ำ ({Math.max(0, grandSummary.suppliersWithOrdersCount - grandSummary.suppliersMetCount)})
-          </button>
-
-          <button
-            onClick={() => setActiveTab("met_min")}
-            className={`min-h-[38px] px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all touch-manipulation ${
-              activeTab === "met_min"
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
-            }`}
-          >
-            ครบขั้นต่ำแล้ว ({grandSummary.suppliersMetCount})
+            เฉพาะใกล้หมด ({supplierMetrics.filter((m) => m.lowStockItems.length > 0).length})
           </button>
 
           <button
@@ -524,34 +450,23 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
           </div>
         ) : (
           filteredMetrics.map((item) => {
-            const {
-              supplier,
-              outOfStockItems,
-              lowStockItems,
-              totalOrderAmount,
-              minOrderAmount,
-              progressPercent,
-              isMet,
-              shortfall,
-              surplus,
-              tierColor,
-            } = item;
-
+            const { supplier, outOfStockItems, lowStockItems, hasAlerts } = item;
             const isExpanded = !!expandedSuppliers[supplier.id];
             const schedule = getSupplierScheduleStatus(supplier.orderDays);
-            const hasOrders = outOfStockItems.length > 0;
-            const hasAlerts = outOfStockItems.length > 0 || lowStockItems.length > 0;
-            const cappedPercent = Math.min(100, Math.max(0, Math.round(progressPercent)));
             const lineMessage = generateLineMessage(supplier);
             const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineMessage)}`;
 
-            // Tier styling definitions
-            const tierStyles = TIER_STYLES[tierColor];
+            const cardBorderClass =
+              outOfStockItems.length > 0
+                ? "border-rose-200/90 shadow-rose-500/5"
+                : lowStockItems.length > 0
+                ? "border-amber-200/90 shadow-amber-500/5"
+                : "border-slate-200/80";
 
             return (
               <div
                 key={supplier.id}
-                className={`bg-white rounded-2xl border ${tierStyles.borderGlow} shadow-sm overflow-hidden transition-all duration-200`}
+                className={`bg-white rounded-2xl border ${cardBorderClass} shadow-sm overflow-hidden transition-all duration-200`}
               >
                 {/* Supplier Header Card */}
                 <div className="p-4 sm:p-5 space-y-3">
@@ -592,107 +507,41 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
                     {/* Status Badge */}
                     <div className="shrink-0">
-                      {hasOrders ? (
-                        isMet ? (
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${tierStyles.badge}`}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            {minOrderAmount <= 0 ? "ไม่มีขั้นต่ำ" : "ครบขั้นต่ำแล้ว"}
-                          </span>
-                        ) : (
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${tierStyles.badge}`}
-                          >
-                            <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-                            ขาดอีก {formatBaht(shortfall)}
-                          </span>
-                        )
+                      {outOfStockItems.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border border-rose-200 bg-rose-50 text-rose-700">
+                          <XCircle className="w-3.5 h-3.5 text-rose-500" />
+                          ต้องสั่ง {outOfStockItems.length} รายการ
+                        </span>
                       ) : lowStockItems.length > 0 ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border border-amber-200 bg-amber-50 text-amber-700">
                           <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                           ใกล้หมด {lowStockItems.length} รายการ
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
-                          ยังไม่มีออเดอร์
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200 bg-slate-100 text-slate-500">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+                          สต็อกมีครบ
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Real-time Order Summary Numbers */}
-                  <div className="flex items-baseline justify-between pt-1">
-                    <div>
-                      <span className="text-xs text-slate-400 block">ยอดสั่งซื้อปัจจุบัน</span>
-                      <span className="text-2xl font-black text-slate-900 tracking-tight">
-                        {formatBaht(totalOrderAmount)}
-                      </span>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="text-xs text-slate-400 block">เกณฑ์ขั้นต่ำ</span>
-                      <span className="text-sm font-semibold text-slate-600">
-                        {minOrderAmount > 0 ? formatBaht(minOrderAmount) : "ไม่กำหนด"}
-                      </span>
-                    </div>
+                  {/* Stock Item Counts Breakdown Pills */}
+                  <div className="flex items-center gap-2 pt-1 text-xs flex-wrap">
+                    <span className="px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-100 text-rose-700 font-bold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                      สินค้าหมด: {outOfStockItems.length} รายการ
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-100 text-amber-700 font-bold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                      ใกล้หมด: {lowStockItems.length} รายการ
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 font-medium">
+                      รวมทั้งหมด: {supplier.items.length} รายการ
+                    </span>
                   </div>
 
-                  {/* 3-Tier Minimum Order Progress Bar */}
-                  {minOrderAmount > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      <div className="flex justify-between items-center text-xs font-medium">
-                        <span className="text-slate-600 flex items-center gap-1">
-                          ความคืบหน้ายอดสั่งซื้อ
-                          <span
-                            className={`font-bold ${
-                              tierColor === "green"
-                                ? "text-emerald-600"
-                                : tierColor === "amber"
-                                ? "text-amber-600"
-                                : "text-rose-600"
-                            }`}
-                          >
-                            ({Math.round(progressPercent)}%)
-                          </span>
-                        </span>
-
-                        {/* Shortfall Text Requirement */}
-                        <span className="text-slate-500 text-[11px]">
-                          {isMet
-                            ? `ผ่านเกณฑ์${surplus > 0 ? ` (เกิน ${formatBaht(surplus)})` : ""}`
-                            : `ขาดอีก ${formatBaht(shortfall)}`}
-                        </span>
-                      </div>
-
-                      {/* Bar Track */}
-                      <div className={`w-full h-3 rounded-full ${tierStyles.progressBg} overflow-hidden p-0.5`}>
-                        <div
-                          className={`h-full rounded-full ${tierStyles.bar} transition-all duration-500 ease-out`}
-                          style={{ width: `${cappedPercent}%` }}
-                        />
-                      </div>
-
-                      {/* Detail Text: "ยอดสั่ง 3,450 / ขั้นต่ำ 5,000 บาท (ขาดอีก 1,550 บาท)" */}
-                      <div className="text-[11px] text-slate-500 bg-slate-50 rounded-lg p-2 border border-slate-100 flex items-center justify-between flex-wrap gap-1">
-                        <span>
-                          ยอดสั่ง <strong className="text-slate-800">{formatBaht(totalOrderAmount)}</strong> / ขั้นต่ำ{" "}
-                          <strong className="text-slate-800">{formatBaht(minOrderAmount)}</strong>
-                        </span>
-                        <span
-                          className={`font-semibold ${
-                            isMet ? "text-emerald-700" : "text-rose-600"
-                          }`}
-                        >
-                          {isMet
-                            ? "✓ ผ่านเกณฑ์สั่งซื้อแล้ว"
-                            : `(ขาดอีก ${formatBaht(shortfall)} บาท)`}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action Buttons: Copy to LINE, Open LINE, Preview */}
+                  {/* Action Buttons: Copy to LINE, Open LINE */}
                   {hasAlerts ? (
                     <div className="pt-2 grid grid-cols-2 gap-2">
                       {/* Button 1: Copy to LINE */}
@@ -790,7 +639,6 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
                           {outOfStockItems.map((item, idx) => {
                             const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
-                            const lineTotal = item.unitPrice * qty;
 
                             return (
                               <div
@@ -806,13 +654,15 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       {item.name}
                                     </span>
                                   </div>
-                                  <div className="text-[11px] text-slate-500 ml-5 mt-0.5">
-                                    {formatBaht(item.unitPrice)} / {item.unit}
-                                  </div>
+                                  {item.note && (
+                                    <div className="text-[11px] text-slate-400 ml-5 mt-0.5">
+                                      {item.note}
+                                    </div>
+                                  )}
                                 </div>
 
-                                {/* Quantity Stepper & Line Total */}
-                                <div className="flex items-center gap-3 shrink-0">
+                                {/* Quantity Stepper */}
+                                <div className="flex items-center gap-2 shrink-0">
                                   <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
                                     <button
                                       type="button"
@@ -834,15 +684,9 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       <Plus className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
-
-                                  <div className="text-right w-20">
-                                    <div className="text-xs font-bold text-slate-900">
-                                      {formatBaht(lineTotal)}
-                                    </div>
-                                    <div className="text-[10px] text-slate-400">
-                                      {qty} {item.unit}
-                                    </div>
-                                  </div>
+                                  <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-1 rounded-md border border-rose-200">
+                                    สั่ง {qty} {item.unit}
+                                  </span>
                                 </div>
                               </div>
                             );
@@ -876,9 +720,11 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       {item.name}
                                     </span>
                                   </div>
-                                  <div className="text-[11px] text-slate-500 ml-5 mt-0.5">
-                                    {formatBaht(item.unitPrice)} / {item.unit}
-                                  </div>
+                                  {item.note && (
+                                    <div className="text-[11px] text-slate-400 ml-5 mt-0.5">
+                                      {item.note}
+                                    </div>
+                                  )}
                                 </div>
 
                                 <div className="shrink-0 text-right">
