@@ -83,9 +83,10 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
     return counts;
   }, [items]);
 
-  // Filter items based on user criteria
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
+  // Filter and sort items based on user criteria:
+  // "อันไหนนับแล้วก็ให้เลื่อนลงไปอยู่ล่างสุดแทน"
+  const { uncountedItems, countedItems, filteredItems } = useMemo(() => {
+    const matched = items.filter((item) => {
       // 1. Supplier Filter
       if (selectedSupplierId !== "ALL" && item.supplierId !== selectedSupplierId) {
         return false;
@@ -109,6 +110,15 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
 
       return true;
     });
+
+    const uncounted = matched.filter((item) => item.status === "NONE");
+    const counted = matched.filter((item) => item.status !== "NONE");
+
+    return {
+      uncountedItems: uncounted,
+      countedItems: counted,
+      filteredItems: [...uncounted, ...counted],
+    };
   }, [items, selectedSupplierId, selectedStatus, searchQuery]);
 
   // Optimistic update handler for 0ms latency UI response
@@ -255,7 +265,25 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredItems.map((item) => (
+          {/* 1. รายการที่ยังไม่ได้นับ (NONE) แสดงอยู่ด้านบน */}
+          {uncountedItems.map((item) => (
+            <StockItemCard key={item.id} item={item} onUpdate={handleItemUpdate} />
+          ))}
+
+          {/* เส้นคั่นเมื่อมีทั้งรายการที่ยังไม่ได้นับและรายการที่นับแล้ว */}
+          {uncountedItems.length > 0 && countedItems.length > 0 && (
+            <div className="flex items-center gap-2.5 py-3 px-1 my-1">
+              <div className="h-px bg-slate-200 flex-1" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200/80 text-[11px] font-bold text-slate-500 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>นับแล้ว ({countedItems.length} รายการ)</span>
+              </div>
+              <div className="h-px bg-slate-200 flex-1" />
+            </div>
+          )}
+
+          {/* 2. รายการที่นับแล้ว ย้ายลงมาอยู่ด้านล่างสุด */}
+          {countedItems.map((item) => (
             <StockItemCard key={item.id} item={item} onUpdate={handleItemUpdate} />
           ))}
         </div>
