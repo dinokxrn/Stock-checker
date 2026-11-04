@@ -11,6 +11,7 @@ interface PinKeypadProps {
   subtitle?: string;
   maxDigits?: number;
   minDigits?: number;
+  header?: React.ReactNode;
 }
 
 export function PinKeypad({
@@ -21,6 +22,7 @@ export function PinKeypad({
   subtitle = "รหัสตัวเลข 4 หลักเพื่อเข้าใช้งาน",
   maxDigits = 4,
   minDigits = 4,
+  header,
 }: PinKeypadProps) {
   const [pin, setPin] = useState("");
   const [isShaking, setIsShaking] = useState(false);
@@ -122,13 +124,17 @@ export function PinKeypad({
   return (
     <div className="w-full max-w-xs mx-auto flex flex-col items-center select-none">
       {/* Title & Icon Header */}
-      <div className="flex flex-col items-center text-center mb-6">
-        <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 shadow-inner border border-blue-100">
-          <Lock className="w-7 h-7" />
+      {header !== undefined ? (
+        header
+      ) : (
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 shadow-inner border border-blue-100">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 tracking-tight">{title}</h2>
+          <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
         </div>
-        <h2 className="text-xl font-bold text-slate-800 tracking-tight">{title}</h2>
-        <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
-      </div>
+      )}
 
       {/* Visual PIN Dots Indicator */}
       <div
