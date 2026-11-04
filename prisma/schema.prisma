@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Supplier {
+  id             String   @id @default(cuid())
+  name           String
+  contactPhone   String?
+  note           String?
+  minOrderAmount Float    @default(0)
+  items          Item[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Item {
+  id         String   @id @default(cuid())
+  name       String
+  unit       String   @default("ชิ้น")
+  unitPrice  Float    @default(0)
+  note       String?
+  status     String   @default("NONE") // NONE, IN_STOCK, LOW_STOCK, OUT_OF_STOCK
+  remain     Float?
+  ordered    Float?
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([supplierId])
+}
+
+model SnapshotArchive {
+  id                String         @id @default(cuid())
+  snapshotDate      DateTime       @default(now())
+  note              String?
+  totalItemsChecked Int            @default(0)
+  totalOutOfStock   Int            @default(0)
+  totalOrderAmount  Float          @default(0)
+  createdAt         DateTime       @default(now())
+  items             SnapshotItem[]
+}
+
+model SnapshotItem {
+  id           String          @id @default(cuid())
+  snapshotId   String
+  snapshot     SnapshotArchive @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  supplierName String
+  itemName     String
+  unit         String
+  unitPrice    Float
+  status       String
+  remain       Float?
+  ordered      Float?
+  lineTotal    Float           @default(0)
+
+  @@index([snapshotId])
+}
