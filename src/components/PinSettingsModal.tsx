@@ -39,8 +39,8 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
       return;
     }
 
-    if (!newPin || !/^\d{4,6}$/.test(newPin)) {
-      setError("รหัส PIN ใหม่ต้องเป็นตัวเลข 4-6 หลัก");
+    if (!newPin || !/^\d{4}$/.test(newPin)) {
+      setError("รหัส PIN ใหม่ต้องเป็นตัวเลข 4 หลัก");
       return;
     }
 
@@ -140,7 +140,7 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
               type={showPins ? "text" : "password"}
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={4}
               value={currentPin}
               onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, ""))}
               placeholder="ระบุรหัสเดิม (ค่าเริ่มต้น 1234)"
@@ -152,16 +152,16 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
           {/* New PIN */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              รหัส PIN ใหม่ (4-6 หลัก) <span className="text-rose-500">*</span>
+              รหัส PIN ใหม่ (4 หลัก) <span className="text-rose-500">*</span>
             </label>
             <input
               type={showPins ? "text" : "password"}
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={4}
               value={newPin}
               onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-              placeholder="ระบุตัวเลข 4-6 หลัก"
+              placeholder="ระบุตัวเลข 4 หลัก"
               disabled={isLoading || success}
               className="w-full h-12 px-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base font-mono tracking-widest text-slate-800 placeholder:text-slate-400 placeholder:font-sans placeholder:tracking-normal placeholder:text-xs"
             />
@@ -176,7 +176,7 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
               type={showPins ? "text" : "password"}
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={4}
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
               placeholder="กรอกรหัสใหม่อีกครั้ง"

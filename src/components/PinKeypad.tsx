@@ -18,8 +18,8 @@ export function PinKeypad({
   isLoading = false,
   errorMessage = null,
   title = "กรุณาระบุรหัส PIN",
-  subtitle = "รหัสตัวเลข 4-6 หลักเพื่อเข้าใช้งาน",
-  maxDigits = 6,
+  subtitle = "รหัสตัวเลข 4 หลักเพื่อเข้าใช้งาน",
+  maxDigits = 4,
   minDigits = 4,
 }: PinKeypadProps) {
   const [pin, setPin] = useState("");
@@ -55,10 +55,14 @@ export function PinKeypad({
             // Ignore
           }
         }
-        setPin((prev) => prev + digit);
+        const nextPin = pin + digit;
+        setPin(nextPin);
+        if (nextPin.length === maxDigits) {
+          onComplete(nextPin);
+        }
       }
     },
-    [isLoading, pin.length, maxDigits]
+    [isLoading, pin, maxDigits, onComplete]
   );
 
   const handleDelete = useCallback(() => {

@@ -17,11 +17,11 @@ export interface AuthResponse {
 }
 
 /**
- * Authenticates user with 4-6 digit numeric PIN and establishes session cookie
+ * Authenticates user with 4-digit numeric PIN and establishes session cookie
  */
 export async function loginWithPin(pin: string): Promise<AuthResponse> {
-  if (!pin || !/^\d{4,6}$/.test(pin)) {
-    return { success: false, error: "รหัส PIN ต้องเป็นตัวเลข 4-6 หลัก" };
+  if (!pin || !/^\d{4}$/.test(pin)) {
+    return { success: false, error: "รหัส PIN ต้องเป็นตัวเลข 4 หลัก" };
   }
 
   try {
@@ -81,8 +81,8 @@ export async function changePinAction(
       return { success: false, error: "รหัส PIN ปัจจุบันไม่ถูกต้อง" };
     }
 
-    if (!newPin || !/^\d{4,6}$/.test(newPin)) {
-      return { success: false, error: "รหัส PIN ใหม่ต้องเป็นตัวเลข 4-6 หลัก" };
+    if (!newPin || !/^\d{4}$/.test(newPin)) {
+      return { success: false, error: "รหัส PIN ใหม่ต้องเป็นตัวเลข 4 หลัก" };
     }
 
     if (newPin !== confirmPin) {

@@ -62,7 +62,7 @@ function LoginForm() {
           title="ยืนยันตัวตนด้วยรหัส PIN"
           subtitle="แตะแป้นตัวเลขเพื่อเข้าสู่ระบบร้านค้า"
           minDigits={4}
-          maxDigits={6}
+          maxDigits={4}
         />
 
         {/* Helpful default credential tip */}
