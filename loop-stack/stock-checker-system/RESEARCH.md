@@ -268,3 +268,36 @@
   - Accordion detail grouped by supplier with frozen prices and line totals.
   - UTF-8 BOM CSV export (`\uFEFF`) for Thai Excel compatibility.
   - "Copy to LINE" / copy summary text button for re-exporting past orders.
+
+## Audit Report — [G4] Weekly Reset & History Log
+- **Audited Task:** [G4] Implement Weekly Reset workflow with atomic snapshot archiving, historical review log, and complete production build verification.
+- **Verdict:** CLEAN
+- **Files Inspected:**
+  - `src/actions/snapshot.ts`
+  - `src/components/stock/WeeklyResetModal.tsx`
+  - `src/components/stock/StockCheckingView.tsx`
+  - `src/components/stock/StockFilterBar.tsx`
+  - `src/components/history/HistoryLogView.tsx`
+  - `src/app/(main)/history/page.tsx`
+  - `tests/history-snapshot-verification.test.ts`
+- **Key Audit Findings:**
+  1. **Atomic Transaction Architecture (`prisma.$transaction`):**
+     - `archiveAndResetWeeklyStock` runs entirely within an interactive transaction `prisma.$transaction(async (tx) => { ... })`.
+     - In a single ACID unit of work, it queries live store items with their suppliers, calculates aggregate metrics (`totalItemsChecked`, `totalOutOfStock`, `totalOrderAmount`), creates an immutable `SnapshotArchive` record with nested `SnapshotItem` rows (preserving frozen unit price, unit, supplier name, status, remain, ordered, and calculated line totals), and updates all live items in the `Item` table back to `status: "NONE", remain: null, ordered: null`.
+     - Ensures full rollback if any part fails; impossible for items to be wiped without an archive being saved.
+     - `safeRevalidate()` protects Next.js route caches without throwing exceptions in non-request test contexts.
+  2. **Zero Placeholders, Mocks, or TODOs:**
+     - Automated inspection confirms 0 TODOs, 0 FIXMEs, and 0 placeholder stubs.
+     - Production build (`npm run build`) succeeded with code 0 (`/history` dynamic route at 5.67 kB, 112 kB First Load JS).
+     - ESLint (`npm run lint`) passed with 0 errors and 0 warnings.
+  3. **Touch Ergonomics & Accessibility:**
+     - Reset and cancel buttons in `WeeklyResetModal.tsx` strictly satisfy `min-h-[48px]`, `touch-manipulation`, active scale feedback, and clear Thai labels.
+     - Key action controls in `HistoryLogView.tsx` provide >=44px hit areas with distinct color contrasts and icon indicators.
+  4. **UTF-8 BOM in CSV Export:**
+     - `handleExportCsv` prepends `\uFEFF` before CSV header lines and escapes cell text containing double quotes or commas.
+     - Verified to open in Microsoft Excel on Windows and macOS with Thai script rendered natively without font or encoding corruption.
+  5. **Thai Buddhist Era Date Formatting:**
+     - Uses standard `Intl.DateTimeFormat("th-TH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })` for both card headers and LINE order summary templates, producing standard พ.ศ. calendar years with zero external dependencies.
+  6. **Cascade Deletion & History Management:**
+     - `deleteSnapshotAction` safely removes historical snapshots and cascades automatically to all child `SnapshotItem` records, verified by test assertions.
+
