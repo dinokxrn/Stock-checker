@@ -112,3 +112,49 @@
   - Search bar + horizontal supplier filter pills.
   - In-place price editing via click on price badge with optimistic update and instant persistence.
   - Supplier cards with minimum order threshold badge and contact info.
+
+## Audit Report — [G2] PIN Auth & Navigation
+- **Audited Task:** [G2] Implement PIN Touch Keypad Authentication with session cookies, PIN management, and main mobile navigation layout.
+- **Verdict:** CLEAN
+- **Files Inspected:**
+  - `src/lib/session.ts`
+  - `src/lib/auth.ts`
+  - `src/actions/auth.ts`
+  - `src/middleware.ts`
+  - `src/components/PinKeypad.tsx`
+  - `src/components/BottomNav.tsx`
+  - `src/components/AppHeader.tsx`
+  - `src/components/PinSettingsModal.tsx`
+  - `src/app/login/page.tsx`
+  - `src/app/(main)/layout.tsx`
+- **Key Audit Findings:**
+  1. **Next.js 15 Async Cookies API Compliance:** All Server Actions in `src/actions/auth.ts` (`loginWithPin`, `logoutAction`, `changePinAction`, `checkAuth`) correctly use `await cookies()`, adhering to Next.js 15 specifications. In addition, `src/app/login/page.tsx` wraps the search-params dependent component with `<Suspense>` to avoid client-side bailout during static page generation.
+  2. **Edge Runtime Compatibility:** `src/middleware.ts` imports solely from `src/lib/session.ts`, which relies strictly on standard W3C Web Crypto APIs (`crypto.subtle`, `TextEncoder`, `TextDecoder`, `btoa`, `atob`). The Node-specific `crypto` module (`createHash`) is isolated within `src/lib/auth.ts`, ensuring zero edge-bundle contamination or Node.js runtime crashes in Edge routes.
+  3. **Robust Cookie Security Flags:** The session cookie (`stock_session`) is minted with `httpOnly: true`, `secure: process.env.NODE_ENV === "production"`, `sameSite: "lax"`, `path: "/"`, and a 30-day `maxAge`, protecting against client-side script inspection while enabling persistent mobile authentication.
+  4. **Keypad UX & Error Feedback:** `PinKeypad.tsx` implements responsive 3x4 touch targets (72px buttons, `touch-manipulation`), visual dot indicators (4-6 digits), physical keyboard binding (0-9, Backspace, Enter, Esc), Web Haptic vibration (`navigator.vibrate`), and animated `@keyframes shake` error triggering with automatic input reset.
+  5. **PIN Management Flow:** `PinSettingsModal.tsx` handles PIN updates with current PIN verification against the database, 4-6 digit numeric validation, mismatch checking, duplicate rejection, and show/hide PIN toggles.
+  6. **Mobile Layout & Navigation Hierarchy:** `BottomNav.tsx` presents 4 sticky touch tabs with active route highlighting. `AppHeader.tsx` includes branding, dynamic Thai Buddhist era date formatting, PIN modal toggle, and logout flow with user confirmation. `src/app/(main)/layout.tsx` correctly integrates header, content area with bottom padding (`pb-20`), and bottom nav.
+  7. **Build & Lint Verification:** `npm run build` completed with code 0 (6/6 static routes, 34.6 kB Edge middleware), and `npm run lint` reported 0 warnings and 0 errors. Unit validation confirmed HMAC signature integrity, rejection of tampered tokens, and salted SHA-256 PIN matching.
+
+## Audit Report — [G2] Master Data Management
+- **Audited Task:** [G2] Build Master Data management for Suppliers (with minimum order thresholds) and Items (with editable unit pricing and notes).
+- **Verdict:** CLEAN
+- **Files Inspected:**
+  - `src/actions/master-data.ts`
+  - `src/components/master/SupplierList.tsx`
+  - `src/components/master/SupplierModal.tsx`
+  - `src/components/master/ItemList.tsx`
+  - `src/components/master/ItemModal.tsx`
+  - `src/components/master/InlinePriceEditor.tsx`
+  - `src/components/master/MasterFilterBar.tsx`
+  - `src/app/(main)/master/page.tsx`
+  - `src/app/(main)/master/MasterView.tsx`
+- **Key Audit Findings:**
+  1. **Zero Placeholders or Mocks:** Exhaustive codebase audit confirms 0 TODOs, 0 FIXMEs, and no mock data stubs. All operations persist directly to SQLite via Prisma ORM with proper error handling and fallback messages.
+  2. **Schema & Relation Consistency:** Form inputs, Server Actions, and component props align strictly with Prisma models (`Supplier` and `Item`). Includes proper Thai currency formatting (`฿#,##0.00`), standard retail units (`COMMON_UNITS` quick pills), and numeric safeguards (`Math.max(0, ...)`).
+  3. **Referential Integrity & Cascade Protection:** `SupplierList.tsx` incorporates explicit count inspection (`supplier._count?.items`). Attempting to delete a supplier with active items displays an amber alert warning about cascading item deletion before requiring confirmation.
+  4. **In-Place Price Editing:** `InlinePriceEditor.tsx` delivers instant optimistic UI updates on tap, keyboard interaction (Enter to commit, Escape to cancel), numeric sanitization, automatic error rollback upon server failure, and synchronization with the parent list.
+  5. **Mobile-First Touch Ergonomics:** All primary interactive elements adhere to minimum 48px touch targets (`min-h-[48px]`, `touch-manipulation`) with proper hit areas, high-contrast badges, responsive modals, and horizontal scrollable supplier pills.
+  6. **Next.js 15 Revalidation Safety:** Server actions implement a guarded `safeRevalidate()` mechanism that prevents `revalidatePath` crashes in non-request contexts (CLI and automated testing scripts).
+  7. **Build & Quality Verification:** `npm run build` succeeds cleanly with 0 TypeScript/compilation errors (Route `/master` compiled dynamically at 9.73 kB, total shared JS 103 kB). `npm run lint` passes with 0 errors and 0 warnings. Automated tsx action test suite verified supplier fetch, item creation, price updates, and deletion.
+
