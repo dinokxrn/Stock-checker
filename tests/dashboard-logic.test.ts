@@ -33,41 +33,39 @@ function getShortfallText(totalOrderAmount: number, minOrderAmount: number) {
 }
 
 // LINE Message Generator
-function generateLineMessage(supplier: { name: string; minOrderAmount: number; note?: string | null }, items: Array<{ name: string; unitPrice: number; ordered: number; unit: string }>) {
-  const totalAmount = items.reduce((sum, item) => sum + item.unitPrice * item.ordered, 0);
-  const minAmount = supplier.minOrderAmount || 0;
-  const isMet = totalAmount >= minAmount;
-  const diff = Math.abs(minAmount - totalAmount);
-
-  let statusLine = "";
-  if (minAmount <= 0) {
-    statusLine = `✅ ยอดรวม ${formatBaht(totalAmount)} (ไม่มีกำหนดยอดขั้นต่ำ)`;
-  } else if (isMet) {
-    const surplus = totalAmount - minAmount;
-    statusLine = `✅ ผ่านเกณฑ์สั่งซื้อขั้นต่ำ ${formatBaht(minAmount)} แล้ว${
-      surplus > 0 ? ` (เกิน ${formatBaht(surplus)})` : ""
-    }`;
-  } else {
-    statusLine = `⚠️ ยังไม่ถึงยอดสั่งซื้อขั้นต่ำ ${formatBaht(minAmount)} (ขาดอีก ${formatBaht(diff)})`;
-  }
-
-  const itemsText = items
-    .map((item, index) => {
-      const lineTotal = item.unitPrice * item.ordered;
-      return `${index + 1}. ${item.name} x ${item.ordered} ${item.unit} = ${formatBaht(lineTotal)}`;
-    })
-    .join("\n");
+function generateLineMessage(
+  supplier: { name: string; note?: string | null },
+  items: Array<{ name: string; unit: string; status: string; ordered?: number | null; remain?: number | null }>
+) {
+  const outOfStockItems = items.filter((i) => i.status === "OUT_OF_STOCK");
+  const lowStockItems = items.filter((i) => i.status === "LOW_STOCK");
 
   const lines = [
-    `📦 รายการสั่งซื้อ - ${supplier.name}`,
+    `📦 สรุปสต็อก - ${supplier.name}`,
     `---------------------------------`,
-    itemsText,
-    `---------------------------------`,
-    `💰 ยอดรวมทั้งหมด: ${formatBaht(totalAmount)}`,
-    statusLine,
   ];
 
+  if (outOfStockItems.length > 0) {
+    lines.push(`🔴 สินค้าที่หมดแล้ว:`);
+    outOfStockItems.forEach((item, index) => {
+      const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
+      lines.push(`${index + 1}. ${item.name} (สั่ง ${qty} ${item.unit})`);
+    });
+  }
+
+  if (lowStockItems.length > 0) {
+    if (outOfStockItems.length > 0) {
+      lines.push(``);
+    }
+    lines.push(`🟡 สินค้าที่ใกล้หมด:`);
+    lowStockItems.forEach((item, index) => {
+      const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
+      lines.push(`${index + 1}. ${item.name} (เหลือ ${remain} ${item.unit})`);
+    });
+  }
+
   if (supplier.note?.trim()) {
+    lines.push(`---------------------------------`);
     lines.push(`📝 หมายเหตุ: ${supplier.note.trim()}`);
   }
 
@@ -110,16 +108,15 @@ async function runTests() {
     note: "ส่งช่วงเช้าก่อน 10:00 น.",
   };
   const sampleItems = [
-    { name: "น้ำดื่ม สิงห์ 600ml (แพ็ค 12)", unitPrice: 55, ordered: 20, unit: "แพ็ค" },
-    { name: "ข้าวสารหอมมะลิ 5 กก.", unitPrice: 220, ordered: 10, unit: "ถุง" },
+    { name: "น้ำดื่ม สิงห์ 600ml (แพ็ค 12)", unit: "แพ็ค", status: "OUT_OF_STOCK", ordered: 20 },
+    { name: "ข้าวสารหอมมะลิ 5 กก.", unit: "ถุง", status: "LOW_STOCK", remain: 2 },
   ];
-  // 55 * 20 = 1100, 220 * 10 = 2200 => total = 3300 >= 2500 (surplus 800)
   const lineMsg = generateLineMessage(sampleSupplier, sampleItems);
-  assert.ok(lineMsg.includes("📦 รายการสั่งซื้อ - สยามแม็คโคร (Makro)"));
-  assert.ok(lineMsg.includes("1. น้ำดื่ม สิงห์ 600ml (แพ็ค 12) x 20 แพ็ค = ฿1,100"));
-  assert.ok(lineMsg.includes("2. ข้าวสารหอมมะลิ 5 กก. x 10 ถุง = ฿2,200"));
-  assert.ok(lineMsg.includes("💰 ยอดรวมทั้งหมด: ฿3,300"));
-  assert.ok(lineMsg.includes("ผ่านเกณฑ์สั่งซื้อขั้นต่ำ ฿2,500 แล้ว (เกิน ฿800)"));
+  assert.ok(lineMsg.includes("📦 สรุปสต็อก - สยามแม็คโคร (Makro)"));
+  assert.ok(lineMsg.includes("🔴 สินค้าที่หมดแล้ว:"));
+  assert.ok(lineMsg.includes("1. น้ำดื่ม สิงห์ 600ml (แพ็ค 12) (สั่ง 20 แพ็ค)"));
+  assert.ok(lineMsg.includes("🟡 สินค้าที่ใกล้หมด:"));
+  assert.ok(lineMsg.includes("1. ข้าวสารหอมมะลิ 5 กก. (เหลือ 2 ถุง)"));
   assert.ok(lineMsg.includes("📝 หมายเหตุ: ส่งช่วงเช้าก่อน 10:00 น."));
   console.log("✓ LINE Message generated:\n" + lineMsg);
 

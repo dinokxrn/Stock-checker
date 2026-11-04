@@ -172,17 +172,16 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
     const outOfStockItems = snapshot.items.filter(
       (i) => i.status === "OUT_OF_STOCK"
     );
+    const lowStockItems = snapshot.items.filter(
+      (i) => i.status === "LOW_STOCK"
+    );
 
-    // Group out of stock items by supplier
-    const grouped: Record<string, SnapshotItemData[]> = {};
-    for (const item of outOfStockItems) {
-      if (!grouped[item.supplierName]) grouped[item.supplierName] = [];
-      grouped[item.supplierName].push(item);
-    }
+    // Group items by supplier
+    const suppliers = Array.from(new Set(snapshot.items.map((i) => i.supplierName)));
 
     const lines: string[] = [
-      `📦 สรุปรายการสั่งซื้อย้อนหลัง (Snapshot)`,
-      `📅 ประจำวันที่: ${thaiDate}`,
+      `📦 สรุปสต็อกย้อนหลัง (Snapshot)`,
+      `📅 วันที่: ${thaiDate}`,
     ];
 
     if (snapshot.note) {
@@ -191,30 +190,34 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
 
     lines.push(`--------------------------------`);
 
-    if (outOfStockItems.length === 0) {
-      lines.push(`(ไม่มีรายการที่ต้องสั่งซื้อในรอบนี้)`);
-    } else {
-      for (const [supplierName, sItems] of Object.entries(grouped)) {
-        lines.push(`🏢 ${supplierName}`);
-        let subtotal = 0;
-        sItems.forEach((it, idx) => {
+    let hasAlerts = false;
+    for (const supplierName of suppliers) {
+      const sOut = outOfStockItems.filter((i) => i.supplierName === supplierName);
+      const sLow = lowStockItems.filter((i) => i.supplierName === supplierName);
+
+      if (sOut.length === 0 && sLow.length === 0) continue;
+      hasAlerts = true;
+
+      lines.push(`🏢 ${supplierName}`);
+      if (sOut.length > 0) {
+        lines.push(`🔴 สินค้าที่หมดแล้ว:`);
+        sOut.forEach((it, idx) => {
           const qty = it.ordered && it.ordered > 0 ? it.ordered : 1;
-          const cost = it.unitPrice * qty;
-          subtotal += cost;
-          lines.push(
-            `  ${idx + 1}. ${it.itemName}: ${qty} ${it.unit} (฿${cost.toLocaleString(
-              "th-TH",
-              { minimumFractionDigits: 0 }
-            )})`
-          );
+          lines.push(`  ${idx + 1}. ${it.itemName} (สั่ง ${qty} ${it.unit})`);
         });
-        lines.push(
-          `  👉 รวม ${supplierName}: ฿${subtotal.toLocaleString("th-TH", {
-            minimumFractionDigits: 0,
-          })}`
-        );
-        lines.push("");
       }
+      if (sLow.length > 0) {
+        lines.push(`🟡 สินค้าที่ใกล้หมด:`);
+        sLow.forEach((it, idx) => {
+          const remain = it.remain !== null && it.remain !== undefined ? it.remain : 0;
+          lines.push(`  ${idx + 1}. ${it.itemName} (เหลือ ${remain} ${it.unit})`);
+        });
+      }
+      lines.push("");
+    }
+
+    if (!hasAlerts) {
+      lines.push(`(ไม่มีสินค้าหมดหรือใกล้หมดในรอบนี้)`);
     }
 
     lines.push(`================================`);

@@ -19,6 +19,7 @@ import {
   MessageCircle,
   Eye,
   X,
+  XCircle,
   ClipboardList,
 } from "lucide-react";
 import { updateItemStockStatus } from "@/actions/stock";
@@ -152,48 +153,42 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   };
 
   // Generate LINE export formatted string for a supplier
-  const generateLineMessage = (supplier: DashboardSupplier, outOfStockItems: DashboardItem[]) => {
+  const generateLineMessage = (supplier: DashboardSupplier) => {
     const dateStr = getFormattedThaiDate();
-    const totalAmount = outOfStockItems.reduce((sum, item) => {
-      const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
-      return sum + item.unitPrice * qty;
-    }, 0);
+    const outOfStockItems = supplier.items.filter((item) => item.status === "OUT_OF_STOCK");
+    const lowStockItems = supplier.items.filter((item) => item.status === "LOW_STOCK");
 
-    const minAmount = supplier.minOrderAmount || 0;
-    const isMet = totalAmount >= minAmount;
-    const diff = Math.abs(minAmount - totalAmount);
-
-    let statusLine = "";
-    if (minAmount <= 0) {
-      statusLine = `✅ ยอดรวม ${formatBaht(totalAmount)} (ไม่มีกำหนดยอดขั้นต่ำ)`;
-    } else if (isMet) {
-      const surplus = totalAmount - minAmount;
-      statusLine = `✅ ผ่านเกณฑ์สั่งซื้อขั้นต่ำ ${formatBaht(minAmount)} แล้ว${
-        surplus > 0 ? ` (เกิน ${formatBaht(surplus)})` : ""
-      }`;
-    } else {
-      statusLine = `⚠️ ยังไม่ถึงยอดสั่งซื้อขั้นต่ำ ${formatBaht(minAmount)} (ขาดอีก ${formatBaht(diff)})`;
-    }
-
-    const itemsText = outOfStockItems
-      .map((item, index) => {
-        const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
-        const lineTotal = item.unitPrice * qty;
-        return `${index + 1}. ${item.name} x ${qty} ${item.unit} = ${formatBaht(lineTotal)}`;
-      })
-      .join("\n");
-
-    const lines = [
-      `📦 รายการสั่งซื้อ - ${supplier.name}`,
+    const lines: string[] = [
+      `📦 สรุปสต็อก - ${supplier.name}`,
       `📅 วันที่: ${dateStr}`,
       `---------------------------------`,
-      itemsText,
-      `---------------------------------`,
-      `💰 ยอดรวมทั้งหมด: ${formatBaht(totalAmount)}`,
-      statusLine,
     ];
 
+    if (outOfStockItems.length > 0) {
+      lines.push(`🔴 สินค้าที่หมดแล้ว:`);
+      outOfStockItems.forEach((item, index) => {
+        const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
+        lines.push(`${index + 1}. ${item.name} (สั่ง ${qty} ${item.unit})`);
+      });
+    }
+
+    if (lowStockItems.length > 0) {
+      if (outOfStockItems.length > 0) {
+        lines.push(``);
+      }
+      lines.push(`🟡 สินค้าที่ใกล้หมด:`);
+      lowStockItems.forEach((item, index) => {
+        const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
+        lines.push(`${index + 1}. ${item.name} (เหลือ ${remain} ${item.unit})`);
+      });
+    }
+
+    if (outOfStockItems.length === 0 && lowStockItems.length === 0) {
+      lines.push(`(ไม่มีรายการสินค้าหมดหรือใกล้หมด)`);
+    }
+
     if (supplier.note?.trim()) {
+      lines.push(`---------------------------------`);
       lines.push(`📝 หมายเหตุ: ${supplier.note.trim()}`);
     }
 
@@ -201,8 +196,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   };
 
   // Copy LINE text to clipboard
-  const handleCopyToClipboard = async (supplier: DashboardSupplier, items: DashboardItem[]) => {
-    const text = generateLineMessage(supplier, items);
+  const handleCopyToClipboard = async (supplier: DashboardSupplier) => {
+    const text = generateLineMessage(supplier);
     try {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
@@ -219,7 +214,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       }
 
       setCopiedSupplierId(supplier.id);
-      showToast(`คัดลอกรายการสั่งซื้อ "${supplier.name}" ไปยังคลิปบอร์ดแล้ว`);
+      showToast(`คัดลอกรายการสต็อก "${supplier.name}" ไปยังคลิปบอร์ดแล้ว`);
       setTimeout(() => {
         setCopiedSupplierId(null);
       }, 2500);
@@ -240,6 +235,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   const supplierMetrics = useMemo(() => {
     return suppliers.map((supplier) => {
       const outOfStockItems = supplier.items.filter((item) => item.status === "OUT_OF_STOCK");
+      const lowStockItems = supplier.items.filter((item) => item.status === "LOW_STOCK");
       const totalOrderAmount = outOfStockItems.reduce((sum, item) => {
         const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
         return sum + item.unitPrice * qty;
@@ -271,6 +267,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       return {
         supplier,
         outOfStockItems,
+        lowStockItems,
         totalOrderAmount,
         minOrderAmount,
         progressPercent,
@@ -515,6 +512,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             const {
               supplier,
               outOfStockItems,
+              lowStockItems,
               totalOrderAmount,
               minOrderAmount,
               progressPercent,
@@ -526,8 +524,9 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
             const isExpanded = !!expandedSuppliers[supplier.id];
             const hasOrders = outOfStockItems.length > 0;
+            const hasAlerts = outOfStockItems.length > 0 || lowStockItems.length > 0;
             const cappedPercent = Math.min(100, Math.max(0, Math.round(progressPercent)));
-            const lineMessage = generateLineMessage(supplier, outOfStockItems);
+            const lineMessage = generateLineMessage(supplier);
             const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineMessage)}`;
 
             // Tier styling definitions
@@ -583,6 +582,11 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                             ขาดอีก {formatBaht(shortfall)}
                           </span>
                         )
+                      ) : lowStockItems.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border border-amber-200 bg-amber-50 text-amber-700">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                          ใกล้หมด {lowStockItems.length} รายการ
+                        </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
                           ยังไม่มีออเดอร์
@@ -663,11 +667,11 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                   )}
 
                   {/* Action Buttons: Copy to LINE, Open LINE, Preview */}
-                  {hasOrders ? (
+                  {hasAlerts ? (
                     <div className="pt-2 grid grid-cols-2 gap-2">
                       {/* Button 1: Copy to LINE */}
                       <button
-                        onClick={() => handleCopyToClipboard(supplier, outOfStockItems)}
+                        onClick={() => handleCopyToClipboard(supplier)}
                         className={`min-h-[48px] px-3 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-all touch-manipulation shadow-sm ${
                           copiedSupplierId === supplier.id
                             ? "bg-emerald-600 text-white"
@@ -712,14 +716,21 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                   )}
 
                   {/* Toggle Accordion Breakdown */}
-                  {hasOrders && (
+                  {hasAlerts && (
                     <div className="pt-1 border-t border-slate-100 flex items-center justify-between">
                       <button
                         onClick={() => toggleExpand(supplier.id)}
                         className="min-h-[40px] text-xs font-semibold text-slate-700 hover:text-indigo-600 flex items-center gap-1.5 py-1 touch-manipulation transition-colors"
                       >
                         <span>
-                          {isExpanded ? "ซ่อนรายการสินค้า" : `ดูรายการสินค้าหมด (${outOfStockItems.length} รายการ)`}
+                          {isExpanded
+                            ? "ซ่อนรายการสินค้า"
+                            : `ดูรายการสินค้า (${[
+                                outOfStockItems.length > 0 ? `หมด ${outOfStockItems.length}` : "",
+                                lowStockItems.length > 0 ? `ใกล้หมด ${lowStockItems.length}` : "",
+                              ]
+                                .filter(Boolean)
+                                .join(", ")} รายการ)`}
                         </span>
                         {isExpanded ? (
                           <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
@@ -740,73 +751,121 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 </div>
 
                 {/* Expanded Item Breakdown Table / List */}
-                {hasOrders && isExpanded && (
-                  <div className="bg-slate-50/70 border-t border-slate-200/80 p-4 space-y-2.5">
-                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      รายการสินค้าที่ต้องสั่งซื้อ ({outOfStockItems.length} รายการ)
-                    </div>
+                {hasAlerts && isExpanded && (
+                  <div className="bg-slate-50/70 border-t border-slate-200/80 p-4 space-y-3">
+                    {/* Out of Stock Section */}
+                    {outOfStockItems.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-[11px] font-bold text-rose-600 uppercase tracking-wider flex items-center gap-1">
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>สินค้าที่หมดแล้ว ({outOfStockItems.length} รายการ)</span>
+                        </div>
 
-                    <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
-                      {outOfStockItems.map((item, idx) => {
-                        const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
-                        const lineTotal = item.unitPrice * qty;
+                        <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
+                          {outOfStockItems.map((item, idx) => {
+                            const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
+                            const lineTotal = item.unitPrice * qty;
 
-                        return (
-                          <div
-                            key={item.id}
-                            className="p-3 flex items-center justify-between gap-2 hover:bg-slate-50/50 transition-colors"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-medium text-slate-400 w-4">
-                                  {idx + 1}.
-                                </span>
-                                <span className="text-xs font-bold text-slate-800 truncate">
-                                  {item.name}
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-slate-500 ml-5 mt-0.5">
-                                {formatBaht(item.unitPrice)} / {item.unit}
-                              </div>
-                            </div>
-
-                            {/* Quantity Stepper & Line Total */}
-                            <div className="flex items-center gap-3 shrink-0">
-                              <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuantityChange(supplier.id, item.id, -1)}
-                                  className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-200 active:scale-95 transition-all touch-manipulation"
-                                  title="ลดจำนวน"
-                                >
-                                  <Minus className="w-3.5 h-3.5" />
-                                </button>
-                                <span className="w-8 text-center text-xs font-bold text-slate-800">
-                                  {qty}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuantityChange(supplier.id, item.id, 1)}
-                                  className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-200 active:scale-95 transition-all touch-manipulation"
-                                  title="เพิ่มจำนวน"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-
-                              <div className="text-right w-20">
-                                <div className="text-xs font-bold text-slate-900">
-                                  {formatBaht(lineTotal)}
+                            return (
+                              <div
+                                key={item.id}
+                                className="p-3 flex items-center justify-between gap-2 hover:bg-slate-50/50 transition-colors"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-medium text-slate-400 w-4">
+                                      {idx + 1}.
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-800 truncate">
+                                      {item.name}
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 ml-5 mt-0.5">
+                                    {formatBaht(item.unitPrice)} / {item.unit}
+                                  </div>
                                 </div>
-                                <div className="text-[10px] text-slate-400">
-                                  {qty} {item.unit}
+
+                                {/* Quantity Stepper & Line Total */}
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuantityChange(supplier.id, item.id, -1)}
+                                      className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-200 active:scale-95 transition-all touch-manipulation"
+                                      title="ลดจำนวน"
+                                    >
+                                      <Minus className="w-3.5 h-3.5" />
+                                    </button>
+                                    <span className="w-8 text-center text-xs font-bold text-slate-800">
+                                      {qty}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuantityChange(supplier.id, item.id, 1)}
+                                      className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-200 active:scale-95 transition-all touch-manipulation"
+                                      title="เพิ่มจำนวน"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+
+                                  <div className="text-right w-20">
+                                    <div className="text-xs font-bold text-slate-900">
+                                      {formatBaht(lineTotal)}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400">
+                                      {qty} {item.unit}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Low Stock Section */}
+                    {lowStockItems.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>สินค้าที่ใกล้หมด ({lowStockItems.length} รายการ)</span>
+                        </div>
+
+                        <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
+                          {lowStockItems.map((item, idx) => {
+                            const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
+                            return (
+                              <div
+                                key={item.id}
+                                className="p-3 flex items-center justify-between gap-2 hover:bg-slate-50/50 transition-colors"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-medium text-slate-400 w-4">
+                                      {idx + 1}.
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-800 truncate">
+                                      {item.name}
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 ml-5 mt-0.5">
+                                    {formatBaht(item.unitPrice)} / {item.unit}
+                                  </div>
+                                </div>
+
+                                <div className="shrink-0 text-right">
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    เหลือ {remain} {item.unit}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -839,10 +898,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             {/* Formatted Text Box */}
             <div className="flex-1 overflow-y-auto">
               <pre className="w-full p-4 bg-slate-900 text-slate-100 rounded-xl text-xs sm:text-sm font-mono whitespace-pre-wrap leading-relaxed select-all">
-                {generateLineMessage(
-                  previewSupplier,
-                  previewSupplier.items.filter((i) => i.status === "OUT_OF_STOCK")
-                )}
+                {generateLineMessage(previewSupplier)}
               </pre>
             </div>
 
@@ -850,10 +906,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             <div className="pt-2 grid grid-cols-2 gap-2 border-t border-slate-100">
               <button
                 onClick={() => {
-                  handleCopyToClipboard(
-                    previewSupplier,
-                    previewSupplier.items.filter((i) => i.status === "OUT_OF_STOCK")
-                  );
+                  handleCopyToClipboard(previewSupplier);
                 }}
                 className="min-h-[48px] px-4 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-all touch-manipulation shadow-sm"
               >
@@ -863,10 +916,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
               <a
                 href={`https://line.me/R/msg/text/?${encodeURIComponent(
-                  generateLineMessage(
-                    previewSupplier,
-                    previewSupplier.items.filter((i) => i.status === "OUT_OF_STOCK")
-                  )
+                  generateLineMessage(previewSupplier)
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
