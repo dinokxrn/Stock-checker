@@ -175,3 +175,74 @@
   - Progress bar with 3 color tiers: Red (<50%), Amber (50-99%), Green (>=100%).
   - Thai shortfall formatting: `ยอดสั่ง 3,450 / ขั้นต่ำ 5,000 บาท (ขาดอีก 1,550 บาท)`.
   - "Copy to LINE" button generating cleanly formatted message with emojis, numbered items, and threshold status, plus mobile URL scheme deep-link.
+
+## Audit Report — [G3] Stock Checking View
+- **Audited Task:** [G3] Build mobile-first Stock Checking view with 4-state toggle cards (None, In Stock, Low Stock, Out of Stock), dynamic inputs, instant line totals, and supplier filtering.
+- **Verdict:** CLEAN
+- **Files Inspected:**
+  - `src/actions/stock.ts`
+  - `src/components/stock/StockItemCard.tsx`
+  - `src/components/stock/StockFilterBar.tsx`
+  - `src/components/stock/StockCheckingView.tsx`
+  - `src/app/(main)/page.tsx`
+- **Key Audit Findings:**
+  1. **Strict Stock Sanitization Logic:**
+     - `src/actions/stock.ts` enforces robust data sanitization:
+       - `NONE`: `remain = null, ordered = null`
+       - `IN_STOCK` & `LOW_STOCK`: `remain = Math.max(0, remain ?? 0), ordered = null` (strictly clearing any previously ordered quantity to eliminate phantom wholesale order amounts).
+       - `OUT_OF_STOCK`: `remain = 0, ordered = Math.max(1, ordered ?? 1)` (guarantees order quantity is at least 1).
+     - Automated unit tests verified all transitions (`OUT_OF_STOCK` -> `IN_STOCK` cleanly wipes `ordered`, `NONE` nullifies all fields, and non-existent IDs or invalid statuses are rejected).
+  2. **Mobile-First Ergonomics & 48px Touch Targets:**
+     - All primary interactive elements strictly satisfy or exceed the 48px touch target standard:
+       - 4-state segmented buttons: `min-h-[48px]` with `touch-manipulation` and active scale feedback (`active:scale-[0.98]`).
+       - Numeric steppers (+ / -): `min-h-[48px] min-w-[48px]`.
+       - Numeric inputs (remain & ordered): `min-h-[48px]` with `inputMode="numeric"`.
+       - Filter search input: `min-h-[48px]`.
+       - Quick stepper pills (+5, +10) provided for rapid bulk entry.
+  3. **Calculation Accuracy & Instant Line Totals:**
+     - Line total in `StockItemCard.tsx` correctly computes $\text{Unit Price} \times \text{Ordered Quantity}$ when status is `OUT_OF_STOCK`, displaying formatted Thai currency (`฿#,##0.00`).
+     - Summary metrics in `StockCheckingView.tsx` accurately aggregate checked count, breakdown counts per status, and grand wholesale order total for all out-of-stock items.
+  4. **Optimistic UI with Background Synchronization:**
+     - `StockCheckingView` provides immediate 0ms UI responsiveness upon user tap.
+     - Asynchronous persistence via Server Actions with loading state ("กำลังซิงค์..."), auto-fading success indicator ("บันทึกแล้ว"), and state rollback with user-facing alerts upon network/server failures.
+  5. **Rich Filtering & Progress Visuals:**
+     - `StockFilterBar.tsx` renders a live progress bar tracking counted items vs. total store catalog.
+     - Horizontally scrollable supplier chips with item counter badges, quick status filters, and debounced text search across item name, supplier name, and notes.
+     - Sticky bottom floating summary bar displays total out-of-stock items, total order cost, and direct navigation to `/dashboard`.
+  6. **Zero Placeholders & Full Production Verification:**
+     - Zero TODOs, FIXMEs, mock stubs, or placeholder values found.
+     - `safeRevalidate()` protects against `revalidatePath` exceptions during non-request execution.
+     - `npm run build` completed with exit code 0 (`/` compiled dynamically at 6.56 kB, total shared JS 103 kB).
+     - `npm run lint` passed with 0 errors and 0 warnings.
+
+
+## Audit Report — [G3] Order Dashboard
+- **Audited Task:** [G3] Implement real-time Supplier Order Summary Dashboard with minimum order progress indicators and LINE export formatting.
+- **Verdict:** CLEAN
+- **Files Inspected:**
+  - `src/components/dashboard/OrderDashboardView.tsx`
+  - `src/app/(main)/dashboard/page.tsx`
+  - `tests/dashboard-logic.test.ts`
+  - `tests/dashboard-integration.test.ts`
+- **Key Audit Findings:**
+  1. **Strict OUT_OF_STOCK Grouping:** Verified that all calculations (`totalOrderAmount`, `isMet`, `shortfall`, `surplus`), filter tabs, LINE message payloads, and accordion breakdown lists strictly filter `item.status === 'OUT_OF_STOCK'`. Non-out-of-stock items (NONE, IN_STOCK, LOW_STOCK) never contribute to wholesale order totals.
+  2. **Accurate 3-Tier Threshold System:** Color indicator rules strictly comply with the SRS:
+     - **Red (`bg-rose-500`):** Progress $<50\%$
+     - **Amber (`bg-amber-500`):** Progress $50\% - 99.99\%$
+     - **Green (`bg-emerald-500`):** Progress $\ge 100\%$
+     - Exhaustively tested at boundaries (0%, 25%, 49.9%, 50%, 75%, 99.9%, 100%, 150%) with unit assertion in `tests/dashboard-logic.test.ts`.
+  3. **High-Fidelity Shortfall & Surplus Formatting:** Text badges correctly display:
+     - Below minimum: `ยอดสั่ง 3,450 / ขั้นต่ำ 5,000 บาท (ขาดอีก 1,550 บาท)`
+     - Met minimum: `✓ ผ่านเกณฑ์สั่งซื้อแล้ว` with surplus details `(เกิน ฿...)`
+     - No minimum defined: Displays total order with explicit `(ไม่มีกำหนดยอดขั้นต่ำ)` badge.
+  4. **Production-Ready LINE Export & Fallbacks:**
+     - Generates clean Thai order templates with date, numbered item lines with units and calculated line totals, grand total, threshold validation status, and supplier delivery notes.
+     - Implements progressive clipboard copying (`navigator.clipboard.writeText`) with cross-browser hidden `textarea` fallback for legacy or non-secure mobile web views.
+     - Provides both 1-click clipboard copy, deep-link URL scheme (`https://line.me/R/msg/text/?...`), and a visual modal preview.
+  5. **In-Dashboard Stepper & Synchronous Mutation:** Dashboard supports direct quantity tuning with optimistic updates and background `updateItemStockStatus` synchronization using React 19 `useTransition`.
+  6. **Mobile Ergonomics & UI Standards:** All buttons satisfy the 48px touch-target standard (`min-h-[48px]`, `touch-manipulation`), accompanied by clear visual contrast and haptic/toast feedback.
+  7. **Build & Automated Verification:**
+     - `tests/dashboard-logic.test.ts` passed (tier thresholds, shortfall string generation, LINE formatting).
+     - `tests/dashboard-integration.test.ts` passed (database queries, multi-item line total sum, supplier grouping).
+     - `npm run lint` passed with 0 errors and 0 warnings.
+     - `npm run build` completed cleanly with exit code 0 (Route `/dashboard` dynamic size: 7.3 kB, shared JS: 103 kB).

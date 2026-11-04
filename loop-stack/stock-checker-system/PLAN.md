@@ -14,5 +14,5 @@ yes
 - [x] [G2] Implement PIN Touch Keypad Authentication with session cookies, PIN management, and main mobile navigation layout.
 - [x] [G2] Build Master Data management for Suppliers (with minimum order thresholds) and Items (with editable unit pricing and notes).
 - [x] [G3] Build mobile-first Stock Checking view with 4-state toggle cards (None, In Stock, Low Stock, Out of Stock), dynamic inputs, instant line totals, and supplier filtering.
-- [ ] [G3] Implement real-time Supplier Order Summary Dashboard with minimum order progress indicators and LINE export formatting.
+- [x] [G3] Implement real-time Supplier Order Summary Dashboard with minimum order progress indicators and LINE export formatting.
 - [ ] [G4] Implement Weekly Reset workflow with atomic snapshot archiving, historical review log, and complete production build verification.
