@@ -68,20 +68,23 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
   };
 
   // Format date to locale
-  const formatThaiDate = (dateVal: Date | string) => {
-    try {
-      const date = new Date(dateVal);
-      return new Intl.DateTimeFormat(isEn ? "en-US" : "th-TH", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date);
-    } catch {
-      return String(dateVal);
-    }
-  };
+  const formatThaiDate = React.useCallback(
+    (dateVal: Date | string) => {
+      try {
+        const date = new Date(dateVal);
+        return new Intl.DateTimeFormat(isEn ? "en-US" : "th-TH", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(date);
+      } catch {
+        return String(dateVal);
+      }
+    },
+    [isEn]
+  );
 
   // Toggle snapshot expansion
   const toggleSnapshot = (id: string) => {
@@ -106,7 +109,7 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
       );
       return matchNote || matchDate || matchItem;
     });
-  }, [snapshots, searchQuery, isEn]);
+  }, [snapshots, searchQuery, formatThaiDate]);
 
   // Export Snapshot to UTF-8 BOM CSV
   const handleExportCsv = (snapshot: SnapshotArchiveData) => {
