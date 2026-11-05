@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { deleteSnapshotAction } from "@/actions/snapshot";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -68,7 +68,7 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
   };
 
   // Format date to locale
-  const formatThaiDate = React.useCallback(
+  const formatThaiDate = useCallback(
     (dateVal: Date | string) => {
       try {
         const date = new Date(dateVal);
