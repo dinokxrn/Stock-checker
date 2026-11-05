@@ -34,6 +34,7 @@ import {
 } from "@/actions/stock";
 import { OrderScheduleAlert } from "@/components/OrderScheduleAlert";
 import { getSupplierScheduleStatus } from "@/lib/order-schedule";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface DashboardItem {
   id: string;
@@ -77,6 +78,7 @@ interface EditingStockItem {
 type FilterTab = "active" | "out_of_stock" | "low_stock" | "all";
 
 export default function OrderDashboardView({ initialSuppliers }: OrderDashboardViewProps) {
+  const { t, lang } = useLanguage();
   const [suppliers, setSuppliers] = useState<DashboardSupplier[]>(initialSuppliers);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("active");
@@ -98,7 +100,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
   // Helper to format currency
   const formatBaht = (amount: number) => {
-    return `฿${amount.toLocaleString("th-TH", {
+    return `฿${amount.toLocaleString(lang === "en" ? "en-US" : "th-TH", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     })}`;
@@ -189,12 +191,12 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
     if (res.success) {
       if (targetStatus === "NONE") {
-        showToast(`ย้าย "${editingItem.name}" กลับไปที่หน้าตรวจนับสต็อกแล้ว`);
+        showToast(lang === "en" ? `Moved "${editingItem.name}" back to stock check` : `ย้าย "${editingItem.name}" กลับไปที่หน้าตรวจนับสต็อกแล้ว`);
       } else {
-        showToast(`บันทึกการแก้ไข "${editingItem.name}" เรียบร้อยแล้ว`);
+        showToast(lang === "en" ? `Saved changes for "${editingItem.name}"` : `บันทึกการแก้ไข "${editingItem.name}" เรียบร้อยแล้ว`);
       }
     } else {
-      showToast(res.error || "เกิดข้อผิดพลาดในการแก้ไข");
+      showToast(res.error || (lang === "en" ? "Failed to save changes" : "เกิดข้อผิดพลาดในการแก้ไข"));
     }
   };
 
@@ -270,7 +272,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       await toggleItemOrderedStatus(itemId, nextState);
     });
 
-    showToast(nextState ? "ทำเครื่องหมายว่าสั่งแล้ว ✓" : "เปลี่ยนสถานะเป็นยังไม่สั่ง");
+    showToast(nextState ? (lang === "en" ? "Marked as ordered ✓" : "ทำเครื่องหมายว่าสั่งแล้ว ✓") : (lang === "en" ? "Marked as pending order" : "เปลี่ยนสถานะเป็นยังไม่สั่ง"));
   };
 
   // Bulk toggle ordered for all alert items of a supplier
@@ -294,13 +296,13 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       await toggleSupplierItemsOrdered(supplierId, targetState);
     });
 
-    showToast(targetState ? "ติ๊กสั่งแล้วทุกรายการ ✓" : "ยกเลิกสถานะสั่งแล้วทั้งหมด");
+    showToast(targetState ? (lang === "en" ? "Marked all items as ordered ✓" : "ติ๊กสั่งแล้วทุกรายการ ✓") : (lang === "en" ? "Unmarked all ordered items" : "ยกเลิกสถานะสั่งแล้วทั้งหมด"));
   };
 
   // Helper to format date for LINE message
   const getFormattedThaiDate = () => {
     const now = new Date();
-    return now.toLocaleDateString("th-TH", {
+    return now.toLocaleDateString(lang === "en" ? "en-US" : "th-TH", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -311,6 +313,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
   // Generate LINE export formatted string for a single supplier
   const generateLineMessage = (supplier: DashboardSupplier) => {
+    const isEn = lang === "en";
     const dateStr = getFormattedThaiDate();
     const outOfStockItems = supplier.items.filter((item) => item.status === "OUT_OF_STOCK");
     const lowStockItems = supplier.items.filter((item) => item.status === "LOW_STOCK");
@@ -322,19 +325,19 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     });
 
     const lines: string[] = [
-      `📦 สรุปรายการสั่งซื้อ - ${supplier.name}`,
-      `📅 วันที่: ${dateStr}`,
+      isEn ? `📦 Order Summary - ${supplier.name}` : `📦 สรุปรายการสั่งซื้อ - ${supplier.name}`,
+      isEn ? `📅 Date: ${dateStr}` : `📅 วันที่: ${dateStr}`,
       `---------------------------------`,
     ];
 
     if (outOfStockItems.length > 0) {
-      lines.push(`🔴 สินค้าหมด (ต้องสั่ง):`);
+      lines.push(isEn ? `🔴 Out of Stock (Must Order):` : `🔴 สินค้าหมด (ต้องสั่ง):`);
       outOfStockItems.forEach((item, index) => {
         const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
         const lineTotal = item.unitPrice * qty;
-        const orderTag = item.isOrdered ? "[✓ สั่งแล้ว]" : "[รอสั่ง]";
+        const orderTag = item.isOrdered ? (isEn ? "[✓ Ordered]" : "[✓ สั่งแล้ว]") : (isEn ? "[Pending]" : "[รอสั่ง]");
         const priceTag = item.unitPrice > 0 ? ` (@ ${formatBaht(item.unitPrice)} = ${formatBaht(lineTotal)})` : "";
-        lines.push(`${index + 1}. ${orderTag} ${item.name} - สั่ง ${qty} ${item.unit}${priceTag}`);
+        lines.push(`${index + 1}. ${orderTag} ${item.name} - ${isEn ? "Order" : "สั่ง"} ${qty} ${item.unit}${priceTag}`);
       });
     }
 
@@ -342,35 +345,35 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       if (outOfStockItems.length > 0) {
         lines.push(``);
       }
-      lines.push(`🟡 สินค้าใกล้หมด:`);
+      lines.push(isEn ? `🟡 Low Stock:` : `🟡 สินค้าใกล้หมด:`);
       lowStockItems.forEach((item, index) => {
         const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
-        const orderTag = item.isOrdered ? "[✓ สั่งแล้ว]" : "[รอสั่ง]";
+        const orderTag = item.isOrdered ? (isEn ? "[✓ Ordered]" : "[✓ สั่งแล้ว]") : (isEn ? "[Pending]" : "[รอสั่ง]");
         const priceTag = item.unitPrice > 0 ? ` (${formatBaht(item.unitPrice)}/${item.unit})` : "";
-        lines.push(`${index + 1}. ${orderTag} ${item.name} - เหลือ ${remain} ${item.unit}${priceTag}`);
+        lines.push(`${index + 1}. ${orderTag} ${item.name} - ${isEn ? "Remain" : "เหลือ"} ${remain} ${item.unit}${priceTag}`);
       });
     }
 
     if (outOfStockItems.length === 0 && lowStockItems.length === 0) {
-      lines.push(`(ไม่มีรายการสินค้าหมดหรือใกล้หมด)`);
+      lines.push(isEn ? `(No out of stock or low stock items)` : `(ไม่มีรายการสินค้าหมดหรือใกล้หมด)`);
     }
 
     if (totalAmount > 0) {
       lines.push(`---------------------------------`);
-      lines.push(`💰 ยอดสั่งซื้อประมาณการ: ${formatBaht(totalAmount)}`);
+      lines.push(isEn ? `💰 Estimated Order Total: ${formatBaht(totalAmount)}` : `💰 ยอดสั่งซื้อประมาณการ: ${formatBaht(totalAmount)}`);
       if (supplier.minOrderAmount > 0) {
         const diff = supplier.minOrderAmount - totalAmount;
         if (diff > 0) {
-          lines.push(`🎯 ยอดสั่งขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (ขาดอีก ${formatBaht(diff)})`);
+          lines.push(isEn ? `🎯 Min Order: ${formatBaht(supplier.minOrderAmount)} (Need ${formatBaht(diff)} more)` : `🎯 ยอดสั่งขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (ขาดอีก ${formatBaht(diff)})`);
         } else {
-          lines.push(`🎯 ยอดสั่งขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (✓ ครบยอดแล้ว)`);
+          lines.push(isEn ? `🎯 Min Order: ${formatBaht(supplier.minOrderAmount)} (✓ Met minimum)` : `🎯 ยอดสั่งขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (✓ ครบยอดแล้ว)`);
         }
       }
     }
 
     if (supplier.note?.trim()) {
       lines.push(`---------------------------------`);
-      lines.push(`📝 หมายเหตุ: ${supplier.note.trim()}`);
+      lines.push(isEn ? `📝 Note: ${supplier.note.trim()}` : `📝 หมายเหตุ: ${supplier.note.trim()}`);
     }
 
     return lines.join("\n");
@@ -378,6 +381,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
   // Generate combined LINE export formatted string separated by company
   const generateAllSuppliersLineMessage = () => {
+    const isEn = lang === "en";
     const dateStr = getFormattedThaiDate();
     const suppliersWithAlerts = suppliers.filter((s) =>
       s.items.some((i) => i.status === "OUT_OF_STOCK" || i.status === "LOW_STOCK")
@@ -386,13 +390,13 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     let grandTotal = 0;
 
     const lines: string[] = [
-      `📦 สรุปรายการสั่งซื้อและสต็อก (แยกตามบริษัท)`,
-      `📅 วันที่: ${dateStr}`,
+      isEn ? `📦 Order & Stock Summary (By Supplier)` : `📦 สรุปรายการสั่งซื้อและสต็อก (แยกตามบริษัท)`,
+      isEn ? `📅 Date: ${dateStr}` : `📅 วันที่: ${dateStr}`,
       `=================================`,
     ];
 
     if (suppliersWithAlerts.length === 0) {
-      lines.push(`(สต็อกมีครบทุกรายการ ไม่มีสินค้าหมดหรือใกล้หมด)`);
+      lines.push(isEn ? `(All items well-stocked, no alerts)` : `(สต็อกมีครบทุกรายการ ไม่มีสินค้าหมดหรือใกล้หมด)`);
       return lines.join("\n");
     }
 
@@ -408,39 +412,39 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       grandTotal += supplierTotal;
 
       lines.push(``);
-      lines.push(`🏢 บริษัท: ${supplier.name}`);
+      lines.push(isEn ? `🏢 Supplier: ${supplier.name}` : `🏢 บริษัท: ${supplier.name}`);
       lines.push(`---------------------------------`);
 
       if (outOfStock.length > 0) {
-        lines.push(`🔴 สินค้าหมด (ต้องสั่ง):`);
+        lines.push(isEn ? `🔴 Out of Stock (Must Order):` : `🔴 สินค้าหมด (ต้องสั่ง):`);
         outOfStock.forEach((item, idx) => {
           const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
           const lineTotal = item.unitPrice * qty;
-          const orderTag = item.isOrdered ? "[✓ สั่งแล้ว]" : "[รอสั่ง]";
+          const orderTag = item.isOrdered ? (isEn ? "[✓ Ordered]" : "[✓ สั่งแล้ว]") : (isEn ? "[Pending]" : "[รอสั่ง]");
           const priceTag = item.unitPrice > 0 ? ` (@ ${formatBaht(item.unitPrice)} = ${formatBaht(lineTotal)})` : "";
-          lines.push(`  ${idx + 1}. ${orderTag} ${item.name} - สั่ง ${qty} ${item.unit}${priceTag}`);
+          lines.push(`  ${idx + 1}. ${orderTag} ${item.name} - ${isEn ? "Order" : "สั่ง"} ${qty} ${item.unit}${priceTag}`);
         });
       }
 
       if (lowStock.length > 0) {
         if (outOfStock.length > 0) lines.push(``);
-        lines.push(`🟡 สินค้าใกล้หมด:`);
+        lines.push(isEn ? `🟡 Low Stock:` : `🟡 สินค้าใกล้หมด:`);
         lowStock.forEach((item, idx) => {
           const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
-          const orderTag = item.isOrdered ? "[✓ สั่งแล้ว]" : "[รอสั่ง]";
+          const orderTag = item.isOrdered ? (isEn ? "[✓ Ordered]" : "[✓ สั่งแล้ว]") : (isEn ? "[Pending]" : "[รอสั่ง]");
           const priceTag = item.unitPrice > 0 ? ` (${formatBaht(item.unitPrice)}/${item.unit})` : "";
-          lines.push(`  ${idx + 1}. ${orderTag} ${item.name} - เหลือ ${remain} ${item.unit}${priceTag}`);
+          lines.push(`  ${idx + 1}. ${orderTag} ${item.name} - ${isEn ? "Remain" : "เหลือ"} ${remain} ${item.unit}${priceTag}`);
         });
       }
 
       if (supplierTotal > 0) {
-        lines.push(`💰 ยอดสั่งบริษัทนี้: ${formatBaht(supplierTotal)}`);
+        lines.push(isEn ? `💰 Supplier Order Total: ${formatBaht(supplierTotal)}` : `💰 ยอดสั่งบริษัทนี้: ${formatBaht(supplierTotal)}`);
         if (supplier.minOrderAmount > 0) {
           const diff = supplier.minOrderAmount - supplierTotal;
           if (diff > 0) {
-            lines.push(`🎯 ยอดขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (ขาดอีก ${formatBaht(diff)})`);
+            lines.push(isEn ? `🎯 Min Order: ${formatBaht(supplier.minOrderAmount)} (Need ${formatBaht(diff)} more)` : `🎯 ยอดขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (ขาดอีก ${formatBaht(diff)})`);
           } else {
-            lines.push(`🎯 ยอดขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (✓ ครบยอดแล้ว)`);
+            lines.push(isEn ? `🎯 Min Order: ${formatBaht(supplier.minOrderAmount)} (✓ Met minimum)` : `🎯 ยอดขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (✓ ครบยอดแล้ว)`);
           }
         }
       }
@@ -453,7 +457,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     if (grandTotal > 0) {
       lines.push(``);
       lines.push(`=================================`);
-      lines.push(`💵 ยอดสั่งซื้อประมาณการรวมทุกบริษัท: ${formatBaht(grandTotal)}`);
+      lines.push(isEn ? `💵 Grand Total Order Across All Suppliers: ${formatBaht(grandTotal)}` : `💵 ยอดสั่งซื้อประมาณการรวมทุกบริษัท: ${formatBaht(grandTotal)}`);
       lines.push(`=================================`);
     }
 
@@ -477,11 +481,11 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
         document.body.removeChild(textarea);
       }
       setCopiedAll(true);
-      showToast("คัดลอกสรุปสต็อกทุกบริษัทแล้ว!");
+      showToast(t("copy_all_success"));
       setTimeout(() => setCopiedAll(false), 2500);
     } catch (err) {
       console.error("Clipboard copy failed:", err);
-      showToast("ไม่สามารถคัดลอกได้ กรุณากดดูตัวอย่างเพื่อคัดลอก");
+      showToast(t("toast_copy_error"));
     }
   };
 
@@ -503,13 +507,13 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       }
 
       setCopiedSupplierId(supplier.id);
-      showToast(`คัดลอกรายการสต็อก "${supplier.name}" ไปยังคลิปบอร์ดแล้ว`);
+      showToast(lang === "en" ? `Copied order list for "${supplier.name}" to clipboard` : `คัดลอกรายการสต็อก "${supplier.name}" ไปยังคลิปบอร์ดแล้ว`);
       setTimeout(() => {
         setCopiedSupplierId(null);
       }, 2500);
     } catch (err) {
       console.error("Clipboard copy failed:", err);
-      showToast("ไม่สามารถคัดลอกอัตโนมัติได้ กรุณากดดูตัวอย่างเพื่อคัดลอก");
+      showToast(t("toast_copy_error"));
     }
   };
 
@@ -664,15 +668,15 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             </div>
             <div>
               <h1 className="text-base font-bold text-white leading-tight">
-                สรุปรายการสั่งซื้อและสต็อก
+                {t("dashboard_title")}
               </h1>
               <p className="text-[11px] text-slate-400">
-                รายการสินค้าที่ต้องสั่งซื้อ ราคาประมาณการ และสถานะการสั่ง (แก้ไขสต็อกได้ที่นี่)
+                {t("dashboard_subtitle")}
               </p>
             </div>
           </div>
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            Real-time
+            {t("realtime_badge")}
           </span>
         </div>
 
@@ -680,57 +684,57 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
           {/* Out of stock */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
-            <span className="text-[11px] text-rose-300 font-semibold block mb-0.5 flex items-center gap-1">
+            <span className="text-[11px] text-rose-300 font-semibold mb-0.5 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-              สินค้าหมด
+              {t("status_out_of_stock")}
             </span>
             <div className="text-xl sm:text-2xl font-extrabold text-rose-400 tracking-tight">
-              {grandSummary.totalOutOfStock} <span className="text-xs font-normal text-slate-300">รายการ</span>
+              {grandSummary.totalOutOfStock} <span className="text-xs font-normal text-slate-300">{t("items_unit")}</span>
             </div>
             <div className="text-[10px] text-slate-400 mt-1">
-              จาก {grandSummary.suppliersWithOrdersCount} บริษัท
+              {t("from_suppliers_count").replace("{count}", String(grandSummary.suppliersWithOrdersCount))}
             </div>
           </div>
 
           {/* Low stock */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
-            <span className="text-[11px] text-amber-300 font-semibold block mb-0.5 flex items-center gap-1">
+            <span className="text-[11px] text-amber-300 font-semibold mb-0.5 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              ใกล้หมด
+              {t("status_low_stock")}
             </span>
             <div className="text-xl sm:text-2xl font-extrabold text-amber-400 tracking-tight">
-              {grandSummary.totalLowStock} <span className="text-xs font-normal text-slate-300">รายการ</span>
+              {grandSummary.totalLowStock} <span className="text-xs font-normal text-slate-300">{t("items_unit")}</span>
             </div>
             <div className="text-[10px] text-slate-400 mt-1">
-              เตรียมสั่งเพิ่ม
+              {t("prep_order_desc")}
             </div>
           </div>
 
           {/* Grand Estimated Amount */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
-            <span className="text-[11px] text-emerald-300 font-semibold block mb-0.5 flex items-center gap-1">
+            <span className="text-[11px] text-emerald-300 font-semibold mb-0.5 flex items-center gap-1">
               <Banknote className="w-3.5 h-3.5 text-emerald-400" />
-              ยอดสั่งประมาณการ
+              {t("estimated_grand_total")}
             </span>
             <div className="text-xl sm:text-2xl font-extrabold text-emerald-400 tracking-tight">
               {formatBaht(grandSummary.grandTotalOrderAmount)}
             </div>
             <div className="text-[10px] text-slate-400 mt-1">
-              คำนวณจากราคาต่อหน่วย
+              {t("price_calc_desc")}
             </div>
           </div>
 
           {/* Ordered Progress */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
-            <span className="text-[11px] text-blue-300 font-semibold block mb-0.5 flex items-center gap-1">
+            <span className="text-[11px] text-blue-300 font-semibold mb-0.5 flex items-center gap-1">
               <CheckSquare className="w-3.5 h-3.5 text-blue-400" />
-              สถานะการสั่ง
+              {t("order_status_title")}
             </span>
             <div className="text-xl sm:text-2xl font-extrabold text-blue-400 tracking-tight">
               {grandSummary.totalOrderedItemsCount} / {grandSummary.totalAlertItemsCount}
             </div>
             <div className="text-[10px] text-slate-400 mt-1">
-              รายการที่สั่งแล้ว
+              {t("order_status_desc")}
             </div>
           </div>
         </div>
@@ -746,12 +750,12 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
               {copiedAll ? (
                 <>
                   <Check className="w-4 h-4 stroke-[3]" />
-                  <span>คัดลอกสรุปทุกบริษัทแล้ว!</span>
+                  <span>{t("copy_all_success")}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-4 h-4" />
-                  <span>คัดลอกสรุปทั้งหมด (แยกตามบริษัท)</span>
+                  <span>{t("copy_all_by_supplier")}</span>
                 </>
               )}
             </button>
@@ -762,7 +766,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
               className="min-h-[44px] px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 backdrop-blur-sm active:scale-[0.98] transition-all touch-manipulation border border-white/15"
             >
               <Eye className="w-4 h-4" />
-              <span>ดูตัวอย่างรวม</span>
+              <span>{t("preview_all")}</span>
             </button>
           </div>
         )}
@@ -777,7 +781,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ค้นหาชื่อคู่ค้า หรือชื่อสินค้าที่ต้องสั่ง..."
+            placeholder={t("search_supplier_item")}
             className="w-full pl-9 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
           />
           {searchQuery && (
@@ -800,7 +804,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            ต้องสั่ง ({grandSummary.suppliersWithAlertsCount})
+            {t("tab_must_order")} ({grandSummary.suppliersWithAlertsCount})
           </button>
 
           <button
@@ -811,7 +815,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            หมด ({grandSummary.totalOutOfStock})
+            {t("tab_out_of_stock")} ({grandSummary.totalOutOfStock})
           </button>
 
           <button
@@ -822,7 +826,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            ใกล้หมด ({grandSummary.totalLowStock})
+            {t("tab_low_stock")} ({grandSummary.totalLowStock})
           </button>
 
           <button
@@ -833,7 +837,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            ทั้งหมด ({suppliers.length})
+            {t("tab_all")} ({suppliers.length})
           </button>
         </div>
       </div>
@@ -846,9 +850,9 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
               <Search className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-700">ไม่พบคู่ค้าที่ตรงตามเงื่อนไข</p>
+              <p className="text-sm font-bold text-slate-700">{t("no_suppliers_found")}</p>
               <p className="text-xs text-slate-400 mt-0.5">
-                {searchQuery ? "ลองเปลี่ยนคำค้นหา หรือเลือกแท็บอื่น" : "ทุกรายการสต็อกอยู่ในระดับปกติ"}
+                {searchQuery ? t("empty_search_hint") : t("empty_normal_hint")}
               </p>
             </div>
             {searchQuery && (
@@ -856,7 +860,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 onClick={() => setSearchQuery("")}
                 className="text-xs font-semibold text-indigo-600 hover:underline"
               >
-                ล้างคำค้นหา
+                {t("clear_filter")}
               </button>
             )}
           </div>
@@ -880,7 +884,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
             const isExpanded = Boolean(expandedSuppliers[supplier.id]);
             const isInStockExpanded = Boolean(expandedInStock[supplier.id]);
-            const schedule = getSupplierScheduleStatus(supplier.orderDays);
+            const schedule = getSupplierScheduleStatus(supplier.orderDays, lang);
             const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
               generateLineMessage(supplier)
             )}`;
@@ -933,7 +937,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
                     {/* Total Estimated Order Price Badge */}
                     <div className="text-right shrink-0">
-                      <div className="text-[11px] font-medium text-slate-400">ยอดสั่งซื้อ</div>
+                      <div className="text-[11px] font-medium text-slate-400">{t("supplier_order_total")}</div>
                       <div className="text-base sm:text-lg font-black text-slate-900">
                         {formatBaht(estimatedOrderAmount)}
                       </div>
@@ -945,7 +949,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                     <div className="space-y-1.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200/60">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-slate-600">
-                          ยอดสั่งขั้นต่ำ: <strong className="text-slate-800">{formatBaht(minOrder)}</strong>
+                          {t("min_order_label")} <strong className="text-slate-800">{formatBaht(minOrder)}</strong>
                         </span>
                         <span
                           className={`font-bold ${
@@ -953,8 +957,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                           }`}
                         >
                           {shortfall === 0
-                            ? "✓ ครบยอดสั่งขั้นต่ำแล้ว"
-                            : `ขาดอีก ${formatBaht(shortfall)}`}
+                            ? t("min_order_met")
+                            : `${t("min_order_shortfall")} ${formatBaht(shortfall)}`}
                         </span>
                       </div>
                       <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
@@ -972,11 +976,11 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                   <div className="flex items-center gap-2 pt-1 text-xs flex-wrap">
                     <span className="px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-100 text-rose-700 font-bold flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                      สินค้าหมด: {outOfStockItems.length} รายการ
+                      {t("status_out_of_stock")}: {outOfStockItems.length} {t("items_unit")}
                     </span>
                     <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-100 text-amber-700 font-bold flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                      ใกล้หมด: {lowStockItems.length} รายการ
+                      {t("status_low_stock")}: {lowStockItems.length} {t("items_unit")}
                     </span>
                     {alertItems.length > 0 && (
                       <span
@@ -987,7 +991,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         }`}
                       >
                         <CheckSquare className="w-3.5 h-3.5" />
-                        สั่งแล้ว: {orderedCount} / {alertItems.length}
+                        {t("ordered")}: {orderedCount} / {alertItems.length}
                       </span>
                     )}
                   </div>
@@ -1006,12 +1010,12 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         {copiedSupplierId === supplier.id ? (
                           <>
                             <Check className="w-4 h-4 stroke-[3]" />
-                            <span>คัดลอกข้อความแล้ว!</span>
+                            <span>{t("copy_line_success")}</span>
                           </>
                         ) : (
                           <>
                             <Copy className="w-4 h-4" />
-                            <span>คัดลอกไป LINE</span>
+                            <span>{t("copy_to_line")}</span>
                           </>
                         )}
                       </button>
@@ -1023,18 +1027,18 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         className="min-h-[48px] px-3 py-2.5 rounded-xl font-bold text-xs bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-all touch-manipulation shadow-sm"
                       >
                         <MessageCircle className="w-4 h-4 text-[#06C755]" />
-                        <span>เปิดใน LINE</span>
+                        <span>{t("open_in_line")}</span>
                         <ExternalLink className="w-3.5 h-3.5 opacity-70" />
                       </a>
                     </div>
                   ) : (
                     <div className="pt-1 flex items-center justify-between">
-                      <span className="text-xs text-slate-500">ไม่มีรายการสินค้าที่ต้องสั่งซื้อ</span>
+                      <span className="text-xs text-slate-500">{t("no_items_to_order")}</span>
                       <button
                         onClick={() => toggleExpand(supplier.id)}
                         className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1"
                       >
-                        {isExpanded ? "ซ่อนรายการ" : `ดูรายการทั้งหมด (${supplier.items.length})`}
+                        {isExpanded ? t("hide_items") : `${t("view_items")} (${supplier.items.length})`}
                       </button>
                     </div>
                   )}
@@ -1048,13 +1052,13 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                       >
                         <span>
                           {isExpanded
-                            ? "ซ่อนรายการสินค้า"
-                            : `ดูรายการสินค้า (${[
-                                outOfStockItems.length > 0 ? `หมด ${outOfStockItems.length}` : "",
-                                lowStockItems.length > 0 ? `ใกล้หมด ${lowStockItems.length}` : "",
+                            ? t("hide_items")
+                            : `${t("view_items")} (${[
+                                outOfStockItems.length > 0 ? `${t("status_out_of_stock")} ${outOfStockItems.length}` : "",
+                                lowStockItems.length > 0 ? `${t("status_low_stock")} ${lowStockItems.length}` : "",
                               ]
                                 .filter(Boolean)
-                                .join(", ")} รายการ)`}
+                                .join(", ")} ${t("items_unit")})`}
                         </span>
                         {isExpanded ? (
                           <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
@@ -1073,12 +1077,12 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                           {allOrdered ? (
                             <>
                               <Square className="w-3.5 h-3.5 text-slate-400" />
-                              <span>ยกเลิกสั่งแล้ว</span>
+                              <span>{t("unmark_all_ordered")}</span>
                             </>
                           ) : (
                             <>
                               <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>ติ๊กสั่งแล้วทั้งหมด</span>
+                              <span>{t("mark_all_ordered")}</span>
                             </>
                           )}
                         </button>
@@ -1088,7 +1092,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                           className="min-h-[36px] text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-slate-100 touch-manipulation transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>ตัวอย่าง</span>
+                          <span>{t("preview")}</span>
                         </button>
                       </div>
                     </div>
@@ -1104,9 +1108,9 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         <div className="text-[11px] font-bold text-rose-600 uppercase tracking-wider flex items-center justify-between">
                           <span className="flex items-center gap-1">
                             <XCircle className="w-3.5 h-3.5" />
-                            <span>สินค้าที่หมดแล้ว ({outOfStockItems.length} รายการ)</span>
+                            <span>{t("out_of_stock_section")} ({outOfStockItems.length} {t("items_unit")})</span>
                           </span>
-                          <span className="text-slate-400 font-normal">แตะดินสอเพื่อแก้ไขสถานะ</span>
+                          <span className="text-slate-400 font-normal">{t("tap_pencil_to_edit")}</span>
                         </div>
 
                         <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
@@ -1131,17 +1135,17 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
                                       : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
                                   }`}
-                                  title={isOrdered ? "แตะเพื่อเปลี่ยนเป็นยังไม่สั่ง" : "แตะเพื่อติ๊กว่าสั่งแล้ว"}
+                                  title={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
                                 >
                                   {isOrdered ? (
                                     <>
                                       <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
-                                      <span>สั่งแล้ว</span>
+                                      <span>{t("ordered")}</span>
                                     </>
                                   ) : (
                                     <>
                                       <Square className="w-4 h-4 text-slate-400 shrink-0" />
-                                      <span>รอสั่ง</span>
+                                      <span>{t("pending_order")}</span>
                                     </>
                                   )}
                                 </button>
@@ -1162,7 +1166,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                   </div>
                                   <div className="flex items-center gap-2 mt-0.5 ml-5 text-[11px] text-slate-500">
                                     <span>
-                                      ราคา:{" "}
+                                      {t("price_colon_label")}{" "}
                                       <strong className="text-slate-700">
                                         {item.unitPrice > 0 ? formatBaht(item.unitPrice) : "0"}
                                       </strong>{" "}
@@ -1189,7 +1193,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       onClick={() => handleQuantityChange(supplier.id, item.id, -1)}
                                       disabled={qty <= 1}
                                       className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 disabled:opacity-30 rounded transition-all touch-manipulation"
-                                      title="ลดจำนวน"
+                                      title={t("decrease_qty")}
                                     >
                                       <Minus className="w-3 h-3" />
                                     </button>
@@ -1200,7 +1204,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       type="button"
                                       onClick={() => handleQuantityChange(supplier.id, item.id, 1)}
                                       className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 rounded transition-all touch-manipulation"
-                                      title="เพิ่มจำนวน"
+                                      title={t("increase_qty")}
                                     >
                                       <Plus className="w-3 h-3" />
                                     </button>
@@ -1214,7 +1218,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                     type="button"
                                     onClick={() => handleOpenEdit(item, supplier.name)}
                                     className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 flex items-center justify-center transition-colors ml-1"
-                                    title="แก้ไขสถานะหรือจำนวน"
+                                    title={t("edit_stock_title")}
                                   >
                                     <Pencil className="w-3.5 h-3.5" />
                                   </button>
@@ -1232,9 +1236,9 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider flex items-center justify-between">
                           <span className="flex items-center gap-1">
                             <AlertTriangle className="w-3.5 h-3.5" />
-                            <span>สินค้าที่ใกล้หมด ({lowStockItems.length} รายการ)</span>
+                            <span>{t("low_stock_section")} ({lowStockItems.length} {t("items_unit")})</span>
                           </span>
-                          <span className="text-slate-400 font-normal">ปรับจำนวนคงเหลือ หรือแก้ไขสถานะ</span>
+                          <span className="text-slate-400 font-normal">{t("adjust_remain_or_edit")}</span>
                         </div>
 
                         <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
@@ -1258,17 +1262,17 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
                                       : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
                                   }`}
-                                  title={isOrdered ? "แตะเพื่อเปลี่ยนเป็นยังไม่สั่ง" : "แตะเพื่อติ๊กว่าสั่งแล้ว"}
+                                  title={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
                                 >
                                   {isOrdered ? (
                                     <>
                                       <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
-                                      <span>สั่งแล้ว</span>
+                                      <span>{t("ordered")}</span>
                                     </>
                                   ) : (
                                     <>
                                       <Square className="w-4 h-4 text-slate-400 shrink-0" />
-                                      <span>รอสั่ง</span>
+                                      <span>{t("pending_order")}</span>
                                     </>
                                   )}
                                 </button>
@@ -1288,7 +1292,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                   </div>
                                   <div className="flex items-center gap-2 mt-0.5 ml-5 text-[11px] text-slate-500">
                                     <span>
-                                      ราคา: {item.unitPrice > 0 ? formatBaht(item.unitPrice) : "0"} / {item.unit}
+                                      {t("price_colon_label")} {item.unitPrice > 0 ? formatBaht(item.unitPrice) : "0"} / {item.unit}
                                     </span>
                                   </div>
                                   {item.note && (
@@ -1306,7 +1310,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       onClick={() => handleRemainChange(supplier.id, item.id, -1)}
                                       disabled={remain <= 0}
                                       className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 disabled:opacity-30 rounded transition-all touch-manipulation"
-                                      title="ลดจำนวนคงเหลือ"
+                                      title={t("decrease_remain")}
                                     >
                                       <Minus className="w-3 h-3" />
                                     </button>
@@ -1317,7 +1321,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       type="button"
                                       onClick={() => handleRemainChange(supplier.id, item.id, 1)}
                                       className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded transition-all touch-manipulation"
-                                      title="เพิ่มจำนวนคงเหลือ"
+                                      title={t("increase_remain")}
                                     >
                                       <Plus className="w-3 h-3" />
                                     </button>
@@ -1331,7 +1335,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                     type="button"
                                     onClick={() => handleOpenEdit(item, supplier.name)}
                                     className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 flex items-center justify-center transition-colors ml-1"
-                                    title="แก้ไขสถานะหรือจำนวน"
+                                    title={t("edit_stock_title")}
                                   >
                                     <Pencil className="w-3.5 h-3.5" />
                                   </button>
@@ -1353,10 +1357,10 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         >
                           <span className="flex items-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span>สินค้ามีพอในสต็อก ({inStockItems.length} รายการ)</span>
+                            <span>{t("in_stock_section")} ({inStockItems.length} {t("items_unit")})</span>
                           </span>
                           <span className="text-[11px] font-semibold text-emerald-700 underline">
-                            {isInStockExpanded ? "ซ่อน" : "ดู/แก้ไขรายการ"}
+                            {isInStockExpanded ? t("hide_items") : t("view_edit_items")}
                           </span>
                         </button>
 
@@ -1376,11 +1380,11 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       {item.name}
                                     </span>
                                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
-                                      มีพอ
+                                      {t("status_in_stock")}
                                     </span>
                                   </div>
                                   <div className="text-[11px] text-slate-400 ml-5 mt-0.5">
-                                    ราคา: {item.unitPrice > 0 ? formatBaht(item.unitPrice) : "0"} / {item.unit}
+                                    {t("price_colon_label")} {item.unitPrice > 0 ? formatBaht(item.unitPrice) : "0"} / {item.unit}
                                   </div>
                                 </div>
 
@@ -1391,7 +1395,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                     className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 text-xs font-semibold flex items-center gap-1 transition-colors"
                                   >
                                     <Pencil className="w-3 h-3" />
-                                    <span>แก้ไข</span>
+                                    <span>{t("edit")}</span>
                                   </button>
                                 </div>
                               </div>
@@ -1407,13 +1411,13 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         <div className="p-2 rounded-xl bg-slate-100 text-slate-600 text-xs flex items-center justify-between">
                           <span className="flex items-center gap-1.5">
                             <Package className="w-3.5 h-3.5 text-slate-400" />
-                            <span>ยังไม่ได้นับในรอบนี้: {uncountedItems.length} รายการ</span>
+                            <span>{t("uncounted_section")}: {uncountedItems.length} {t("items_unit")}</span>
                           </span>
                           <Link
                             href="/"
                             className="text-indigo-600 hover:underline font-bold text-[11px]"
                           >
-                            ไปตรวจนับสต็อก →
+                            {t("go_to_stock_count")}
                           </Link>
                         </div>
                       </div>
@@ -1434,10 +1438,10 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-slate-900 leading-snug">
-                  แก้ไขสถานะ: {editingItem.name}
+                  {t("edit_stock_title")}: {editingItem.name}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  บริษัท {editingItem.supplierName} • หน่วย: {editingItem.unit}
+                  {lang === "en" ? "Supplier" : "บริษัท"} {editingItem.supplierName} • {t("counting_unit_label")} {editingItem.unit}
                 </p>
               </div>
               <button
@@ -1451,7 +1455,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
             {/* Status Selection Grid (4 States) */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">เลือกสถานะสต็อก:</label>
+              <label className="text-xs font-bold text-slate-700">{t("select_stock_status")}</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -1464,8 +1468,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 >
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <div>
-                    <div>มีพอในสต็อก</div>
-                    <div className="text-[10px] font-normal opacity-90">ไม่ต้องสั่งเพิ่ม</div>
+                    <div>{t("status_in_stock")}</div>
+                    <div className="text-[10px] font-normal opacity-90">{t("in_stock_desc")}</div>
                   </div>
                 </button>
 
@@ -1480,8 +1484,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 >
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <div>
-                    <div>ใกล้หมด</div>
-                    <div className="text-[10px] font-normal opacity-90">ระบุจำนวนคงเหลือ</div>
+                    <div>{t("status_low_stock")}</div>
+                    <div className="text-[10px] font-normal opacity-90">{t("low_stock_desc")}</div>
                   </div>
                 </button>
 
@@ -1496,8 +1500,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 >
                   <XCircle className="w-4 h-4 shrink-0" />
                   <div>
-                    <div>สินค้าหมด</div>
-                    <div className="text-[10px] font-normal opacity-90">ระบุจำนวนสั่ง</div>
+                    <div>{t("status_out_of_stock")}</div>
+                    <div className="text-[10px] font-normal opacity-90">{t("out_of_stock_desc")}</div>
                   </div>
                 </button>
 
@@ -1512,8 +1516,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 >
                   <RotateCcw className="w-4 h-4 shrink-0" />
                   <div>
-                    <div>ยังไม่นับ (นับใหม่)</div>
-                    <div className="text-[10px] font-normal opacity-90">ย้ายกลับไปหน้านับ</div>
+                    <div>{t("recount_status")}</div>
+                    <div className="text-[10px] font-normal opacity-90">{t("recount_desc")}</div>
                   </div>
                 </button>
               </div>
@@ -1523,7 +1527,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             {editStatus === "LOW_STOCK" && (
               <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl space-y-2">
                 <label className="text-xs font-bold text-amber-900 flex items-center justify-between">
-                  <span>จำนวนคงเหลือ (Remain):</span>
+                  <span>{t("remain_qty_label")}</span>
                   <span className="text-[11px] text-amber-700 font-semibold">{editingItem.unit}</span>
                 </label>
                 <div className="flex items-center gap-2">
@@ -1556,7 +1560,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             {editStatus === "OUT_OF_STOCK" && (
               <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-xl space-y-2">
                 <label className="text-xs font-bold text-rose-900 flex items-center justify-between">
-                  <span>จำนวนที่ต้องการสั่ง (Order Qty):</span>
+                  <span>{t("order_qty_label")}</span>
                   <span className="text-[11px] text-rose-700 font-semibold">{editingItem.unit}</span>
                 </label>
                 <div className="flex items-center gap-2">
@@ -1585,7 +1589,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 </div>
                 {editingItem.unitPrice > 0 && (
                   <div className="text-xs text-rose-700 text-right font-medium">
-                    ราคารวมประมาณการ: <strong>{formatBaht(editOrdered * editingItem.unitPrice)}</strong>
+                    {t("estimated_grand_total")}: <strong>{formatBaht(editOrdered * editingItem.unitPrice)}</strong>
                   </div>
                 )}
               </div>
@@ -1598,7 +1602,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 onClick={() => setEditingItem(null)}
                 className="min-h-[46px] px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-100 transition-colors"
               >
-                ยกเลิก
+                {t("cancel")}
               </button>
 
               <button
@@ -1608,7 +1612,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 className="min-h-[46px] px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/20 active:scale-[0.98] transition-all touch-manipulation"
               >
                 <Check className="w-4 h-4" />
-                <span>{isSavingEdit ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}</span>
+                <span>{isSavingEdit ? t("loading") : t("save")}</span>
               </button>
             </div>
           </div>
@@ -1625,7 +1629,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                   <MessageCircle className="w-4 h-4" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  ตัวอย่างข้อความสั่งซื้อ - {previewSupplier.name}
+                  {t("line_preview_title")} - {previewSupplier.name}
                 </h3>
               </div>
               <button
@@ -1652,7 +1656,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 className="min-h-[48px] px-4 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-all touch-manipulation shadow-sm"
               >
                 <Copy className="w-4 h-4" />
-                คัดลอกข้อความ
+                {t("copy_message")}
               </button>
 
               <a
@@ -1664,7 +1668,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 className="min-h-[48px] px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-all touch-manipulation shadow-sm"
               >
                 <MessageCircle className="w-4 h-4 text-[#06C755]" />
-                เปิดแอป LINE
+                {t("open_line_app")}
               </a>
             </div>
           </div>
@@ -1682,9 +1686,9 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    สรุปสต็อกทุกบริษัท (แยกตามบริษัท)
+                    {t("all_suppliers_summary_title")}
                   </h3>
-                  <p className="text-[11px] text-slate-400">ตัวอย่างข้อความสำหรับส่ง LINE</p>
+                  <p className="text-[11px] text-slate-400">{t("line_preview_subtitle")}</p>
                 </div>
               </div>
               <button
@@ -1711,7 +1715,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 className="min-h-[48px] px-4 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-all touch-manipulation shadow-sm"
               >
                 <Copy className="w-4 h-4" />
-                <span>คัดลอกข้อความ</span>
+                <span>{t("copy_message")}</span>
               </button>
 
               <a
@@ -1723,7 +1727,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 className="min-h-[48px] px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-all touch-manipulation shadow-sm"
               >
                 <MessageCircle className="w-4 h-4 text-[#06C755]" />
-                <span>เปิดแอป LINE</span>
+                <span>{t("open_line_app")}</span>
               </a>
             </div>
           </div>
