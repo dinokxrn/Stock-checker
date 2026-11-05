@@ -179,7 +179,7 @@ export function StockFilterBar({
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span>คู่ค้าทั้งหมด ({stats.total})</span>
+          <span>{t("all_suppliers")} ({stats.total})</span>
         </button>
 
         {suppliers.map((s) => {
@@ -202,17 +202,17 @@ export function StockFilterBar({
               }`}
             >
               {schedule?.isToday && (
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" title="รอบสั่งวันนี้!" />
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" title={t("order_cycle_today")} />
               )}
               {schedule?.isTomorrow && (
-                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" title="รอบสั่งพรุ่งนี้!" />
+                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" title={t("order_cycle_tomorrow")} />
               )}
               <span>{s.name}</span>
               {schedule?.isToday && !isSelected && (
-                <span className="text-[10px] font-black text-rose-600 bg-rose-100 px-1 rounded">วันนี้</span>
+                <span className="text-[10px] font-black text-rose-600 bg-rose-100 px-1 rounded">{t("today")}</span>
               )}
               {schedule?.isTomorrow && !isSelected && (
-                <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1 rounded">พรุ่งนี้</span>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1 rounded">{t("tomorrow")}</span>
               )}
               <span
                 className={`px-1.5 py-0.2 rounded-md text-[10px] ${
@@ -237,7 +237,7 @@ export function StockFilterBar({
               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
         >
-          สถานะ: ทั้งหมด
+          {t("status_all")}
         </button>
         <button
           type="button"
@@ -248,7 +248,7 @@ export function StockFilterBar({
               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
         >
-          ยังไม่นับ ({stats.none})
+          {t("status_none")} ({stats.none})
         </button>
         <button
           type="button"
@@ -259,7 +259,7 @@ export function StockFilterBar({
               : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
           }`}
         >
-          มีพอ ({stats.inStock})
+          {t("status_in_stock")} ({stats.inStock})
         </button>
         <button
           type="button"
@@ -270,7 +270,7 @@ export function StockFilterBar({
               : "bg-amber-50 text-amber-700 hover:bg-amber-100"
           }`}
         >
-          ใกล้หมด ({stats.lowStock})
+          {t("status_low_stock")} ({stats.lowStock})
         </button>
         <button
           type="button"
@@ -281,7 +281,7 @@ export function StockFilterBar({
               : "bg-rose-50 text-rose-700 hover:bg-rose-100"
           }`}
         >
-          สินค้าหมด ({stats.outOfStock})
+          {t("status_out_of_stock")} ({stats.outOfStock})
         </button>
       </div>
     </div>

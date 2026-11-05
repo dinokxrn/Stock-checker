@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { StockStats } from "./StockFilterBar";
 import { archiveAndResetWeeklyStock } from "@/actions/snapshot";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   RotateCcw,
   AlertTriangle,
@@ -27,6 +28,7 @@ export function WeeklyResetModal({
   stats,
   onResetSuccess,
 }: WeeklyResetModalProps) {
+  const { t } = useLanguage();
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export function WeeklyResetModal({
       const res = await archiveAndResetWeeklyStock(note);
 
       if (!res.success) {
-        setErrorMessage(res.error || "เกิดข้อผิดพลาดในการรีเซ็ตสต็อก");
+        setErrorMessage(res.error || t("reset_error"));
         setIsSubmitting(false);
         return;
       }
@@ -53,7 +55,7 @@ export function WeeklyResetModal({
       onClose();
     } catch (err) {
       console.error("Reset error:", err);
-      setErrorMessage("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
+      setErrorMessage(t("network_error"));
       setIsSubmitting(false);
     }
   };
@@ -74,9 +76,9 @@ export function WeeklyResetModal({
             </div>
             <div>
               <h3 id="reset-modal-title" className="text-base font-bold text-slate-800">
-                รีเซ็ตประจำสัปดาห์
+                {t("reset_modal_title")}
               </h3>
-              <p className="text-xs text-slate-500">Weekly Archive & Reset</p>
+              <p className="text-xs text-slate-500">{t("reset_modal_subtitle")}</p>
             </div>
           </div>
           <button
@@ -84,7 +86,7 @@ export function WeeklyResetModal({
             onClick={onClose}
             disabled={isSubmitting}
             className="w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
-            aria-label="ปิดหน้าต่าง"
+            aria-label={t("close_window")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -96,11 +98,10 @@ export function WeeklyResetModal({
           <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-amber-900 text-xs space-y-1.5">
             <div className="flex items-center gap-1.5 font-bold text-amber-800">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>การดำเนินการนี้จะจัดเก็บประวัติและล้างสถานะ</span>
+              <span>{t("reset_warning_title")}</span>
             </div>
             <p className="text-amber-800/90 leading-relaxed pl-5">
-              ระบบจะบันทึกสถานะการนับปัจจุบันทั้งหมดเป็น <strong>ประวัติย้อนหลัง (Snapshot Archive)</strong>{" "}
-              จากนั้นจะปรับสถานะสินค้าทุกรายการกลับเป็น <strong>&ldquo;ยังไม่นับ&rdquo; (NONE)</strong> เพื่อเริ่มต้นการนับในรอบถัดไป
+              {t("reset_warning_desc")}
             </p>
           </div>
 
@@ -108,27 +109,27 @@ export function WeeklyResetModal({
           <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 space-y-2.5">
             <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <Archive className="w-3.5 h-3.5 text-slate-500" />
-              <span>ข้อมูลที่จะถูกจัดเก็บใน Snapshot รอบนี้</span>
+              <span>{t("reset_snapshot_preview")}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
                 <div className="text-slate-500 text-[11px] flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span>ตรวจนับแล้ว</span>
+                  <span>{t("items_counted")}</span>
                 </div>
                 <div className="text-sm font-extrabold text-slate-800 mt-0.5">
-                  {stats.checked} / {stats.total} รายการ
+                  {stats.checked} / {stats.total} {t("items_unit")}
                 </div>
               </div>
 
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
                 <div className="text-slate-500 text-[11px] flex items-center gap-1">
                   <XCircle className="w-3 h-3 text-rose-600" />
-                  <span>สินค้าหมด (ต้องสั่ง)</span>
+                  <span>{t("out_of_stock_must_order")}</span>
                 </div>
                 <div className="text-sm font-extrabold text-rose-600 mt-0.5">
-                  {stats.outOfStock} รายการ
+                  {stats.outOfStock} {t("items_unit")}
                 </div>
               </div>
             </div>
@@ -137,27 +138,27 @@ export function WeeklyResetModal({
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
                 <div className="text-slate-500 text-[11px] flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span>มีพอในสต็อก</span>
+                  <span>{t("in_stock_section")}</span>
                 </div>
                 <div className="text-sm font-extrabold text-emerald-700 mt-0.5">
-                  {stats.inStock} รายการ
+                  {stats.inStock} {t("items_unit")}
                 </div>
               </div>
 
               <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
                 <div className="text-slate-500 text-[11px] flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3 text-amber-600" />
-                  <span>สินค้าใกล้หมด</span>
+                  <span>{t("low_stock_prep_order")}</span>
                 </div>
                 <div className="text-sm font-extrabold text-amber-700 mt-0.5">
-                  {stats.lowStock} รายการ
+                  {stats.lowStock} {t("items_unit")}
                 </div>
               </div>
             </div>
 
             {stats.totalOrderAmount > 0 && (
               <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200/80 flex items-center justify-between text-xs">
-                <span className="text-emerald-800 font-semibold">ยอดสั่งซื้อประมาณการรวม:</span>
+                <span className="text-emerald-800 font-semibold">{t("reset_total_amount_label")}</span>
                 <span className="text-sm font-extrabold text-emerald-700">
                   ฿{stats.totalOrderAmount.toLocaleString("th-TH")}
                 </span>
@@ -169,14 +170,14 @@ export function WeeklyResetModal({
           <div className="space-y-1.5">
             <label htmlFor="reset-note" className="text-xs font-bold text-slate-700 flex items-center gap-1">
               <FileText className="w-3.5 h-3.5 text-slate-500" />
-              <span>บันทึกช่วยจำ (ไม่บังคับ):</span>
+              <span>{t("reset_note_label")}</span>
             </label>
             <input
               id="reset-note"
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="เช่น รอบสัปดาห์ที่ 1 พ.ย. 67, นับก่อนส่งของ..."
+              placeholder={t("reset_note_placeholder")}
               disabled={isSubmitting}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[48px] touch-manipulation"
             />
@@ -202,12 +203,12 @@ export function WeeklyResetModal({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>กำลังจัดเก็บและรีเซ็ต...</span>
+                <span>{t("reset_in_progress")}</span>
               </>
             ) : (
               <>
                 <RotateCcw className="w-4 h-4" />
-                <span>ยืนยันจัดเก็บและรีเซ็ต</span>
+                <span>{t("confirm_archive_and_reset")}</span>
               </>
             )}
           </button>
@@ -218,7 +219,7 @@ export function WeeklyResetModal({
             disabled={isSubmitting}
             className="min-h-[48px] px-4 py-3 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-sm rounded-xl touch-manipulation transition-colors"
           >
-            ยกเลิก
+            {t("cancel")}
           </button>
         </div>
       </div>

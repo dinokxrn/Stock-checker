@@ -7,6 +7,7 @@ import { StockFilterBar, StockStats } from "./StockFilterBar";
 import { WeeklyResetModal } from "./WeeklyResetModal";
 import { updateItemStockStatus, StockStatus } from "@/actions/stock";
 import { OrderScheduleAlert } from "@/components/OrderScheduleAlert";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { ShoppingCart, PackageSearch, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface StockCheckingViewProps {
@@ -15,6 +16,7 @@ interface StockCheckingViewProps {
 }
 
 export function StockCheckingView({ initialItems, suppliers }: StockCheckingViewProps) {
+  const { t } = useLanguage();
   const [items, setItems] = useState<StockItem[]>(initialItems);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSupplierId, setSelectedSupplierId] = useState("ALL");
@@ -33,11 +35,11 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
         ordered: null,
       }))
     );
-    setSuccessBanner("จัดเก็บประวัติและรีเซ็ตสต็อกทั้งหมดเรียบร้อยแล้ว (สามารถดูย้อนหลังได้ที่เมนูประวัติ)");
+    setSuccessBanner(t("weekly_reset_success"));
     setTimeout(() => {
       setSuccessBanner(null);
     }, 5000);
-  }, []);
+  }, [t]);
 
   // Calculate live statistics across all items
   const stats: StockStats = useMemo(() => {
@@ -162,13 +164,13 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
             prevList.map((i) => (i.id === itemId ? prevItem : i))
           );
         }
-        setServerError(res.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+        setServerError(res.error || t("stock_save_error"));
         return false;
       }
 
       return true;
     },
-    [items]
+    [items, t]
   );
 
   return (
@@ -183,7 +185,7 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
             onClick={() => setServerError(null)}
             className="text-xs font-bold text-rose-600 underline"
           >
-            ปิด
+            {t("close")}
           </button>
         </div>
       )}
@@ -198,7 +200,7 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
             onClick={() => setSuccessBanner(null)}
             className="text-emerald-700 hover:text-emerald-900 font-bold underline"
           >
-            ปิด
+            {t("close")}
           </button>
         </div>
       )}
@@ -228,14 +230,14 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
         <span>
           {selectedStatus === "ALL" ? (
             <>
-              รอนับอีก <strong className="text-slate-800 font-bold">{itemsToDisplay.length}</strong> รายการ{" "}
+              {t("items_to_count")} <strong className="text-slate-800 font-bold">{itemsToDisplay.length}</strong> {t("items_unit")}{" "}
               <span className="text-slate-400 font-normal">
-                (นับแล้ว {stats.checked} / {stats.total})
+                ({t("items_counted")} {stats.checked} / {stats.total})
               </span>
             </>
           ) : (
             <>
-              แสดงผล <strong className="text-slate-800 font-bold">{itemsToDisplay.length}</strong> รายการ
+              {t("showing_items")} <strong className="text-slate-800 font-bold">{itemsToDisplay.length}</strong> {t("items_unit")}
             </>
           )}
         </span>
@@ -250,14 +252,14 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
               }}
               className="text-blue-600 hover:text-blue-800 font-medium underline"
             >
-              ล้างตัวกรอง
+              {t("clear_filter")}
             </button>
           )}
           <Link
             href="/dashboard"
             className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
           >
-            <span>หน้าสรุปสั่งซื้อ</span>
+            <span>{t("nav_order")}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -273,10 +275,10 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
             </div>
             <div className="space-y-1.5">
               <h3 className="text-lg font-black text-slate-800">
-                ตรวจนับสต็อกครบถ้วนทุกรายการแล้ว! 🎉
+                {t("all_counted_title")}
               </h3>
               <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-                บันทึกสต็อกครบทั้งหมด {stats.total} รายการแล้ว หากต้องการตรวจสอบ แก้ไขจำนวน หรือส่งออกรายการสั่งซื้อ ให้ไปที่หน้าสรุปสั่งซื้อ
+                {t("all_counted_desc")}
               </p>
             </div>
             <Link
@@ -284,7 +286,7 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
               className="min-h-[48px] px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all touch-manipulation"
             >
               <ShoppingCart className="w-4 h-4" />
-              <span>ไปที่หน้าสรุปรายการสั่งซื้อ</span>
+              <span>{t("go_to_order_summary")}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -294,11 +296,11 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
             <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center">
               <PackageSearch className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-slate-700">ไม่มีรายการสินค้ารอนับในหมวดนี้</h3>
+            <h3 className="font-bold text-slate-700">{t("empty_uncounted_title")}</h3>
             <p className="text-xs text-slate-400 max-w-xs">
               {isFilterActive
-                ? "ลองรีเซ็ตตัวกรองเพื่อดูรายการทั้งหมด หรือไปที่หน้าสรุปสั่งซื้อเพื่อแก้ไขรายการที่นับแล้ว"
-                : "รายการสินค้าทุกตัวในหมวดนี้ถูกบันทึกแล้ว"}
+                ? t("empty_filter_desc_active")
+                : t("empty_uncounted_desc")}
             </p>
             <div className="flex items-center gap-2 pt-2">
               {isFilterActive && (
@@ -311,14 +313,14 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
                   }}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
                 >
-                  รีเซ็ตตัวกรอง
+                  {t("reset_filter")}
                 </button>
               )}
               <Link
                 href="/dashboard"
                 className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl flex items-center gap-1"
               >
-                <span>ไปหน้าสรุปสั่งซื้อ</span>
+                <span>{t("go_to_order_summary")}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -339,16 +341,16 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
             <div className="flex items-center gap-2 text-xs">
               <span className="flex items-center gap-1 text-rose-400 font-bold">
                 <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                สินค้าหมด: {stats.outOfStock}
+                {t("status_out_of_stock")}: {stats.outOfStock}
               </span>
               <span className="text-slate-500">•</span>
               <span className="flex items-center gap-1 text-amber-400 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                ใกล้หมด: {stats.lowStock}
+                {t("status_low_stock")}: {stats.lowStock}
               </span>
             </div>
             <div className="text-sm font-extrabold text-white tracking-tight mt-0.5">
-              ตรวจแล้ว {stats.checked} / {stats.total} รายการ
+              {t("counted_progress_summary")} {stats.checked} / {stats.total} {t("items_unit")}
             </div>
           </div>
 
@@ -357,7 +359,7 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
             className="min-h-[44px] px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/30 transition-all shrink-0 touch-manipulation"
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>ดูรายการสั่งซื้อ</span>
+            <span>{t("view_orders")}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

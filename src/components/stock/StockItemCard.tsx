@@ -543,12 +543,12 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
 
             <div className="text-center space-y-1.5">
               <h3 className="text-lg font-bold text-slate-800">
-                จำนวนคงเหลือเป็น 0 {item.unit}
+                {t("zero_remain_title")} {item.unit}
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                สินค้า <strong className="text-slate-900">&quot;{item.name}&quot;</strong> ระบุคงเหลือ 0 {item.unit}
+                {t("zero_remain_desc_item")} <strong className="text-slate-900">&quot;{item.name}&quot;</strong> {t("zero_remain_desc_tail")} {item.unit}
                 <br />
-                ต้องการเปลี่ยนสถานะเป็น <strong className="text-rose-600">&quot;สินค้าหมด&quot;</strong> หรือไม่?
+                {t("zero_remain_prompt_change")}
               </p>
             </div>
 
@@ -560,7 +560,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                 className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-sm shadow-md shadow-rose-500/25 flex items-center justify-center gap-2 transition-all touch-manipulation"
               >
                 <XCircle className="w-4 h-4" />
-                <span>เปลี่ยนเป็น &quot;สินค้าหมด&quot;</span>
+                <span>{t("btn_change_to_out_of_stock")}</span>
               </button>
 
               {/* Option 2: Keep Low Stock */}
@@ -569,7 +569,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                 onClick={handleKeepLowStockZero}
                 className="w-full min-h-[44px] py-2 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs border border-amber-200 transition-colors touch-manipulation"
               >
-                <span>คงสถานะ &quot;ใกล้หมด (เหลือ 0 {item.unit})&quot;</span>
+                <span>{t("btn_keep_low_stock")}</span>
               </button>
 
               {/* Option 3: Cancel to edit number */}
@@ -578,7 +578,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                 onClick={handleCancelPrompt}
                 className="w-full min-h-[40px] py-1.5 px-4 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-colors touch-manipulation"
               >
-                ยกเลิก (เพื่อปรับจำนวนใหม่)
+                {t("btn_cancel_adjust_qty")}
               </button>
             </div>
           </div>
