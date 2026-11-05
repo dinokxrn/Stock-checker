@@ -121,15 +121,17 @@ export function SupplierList({
                 </div>
               </div>
 
-              {/* Items Count Badge */}
-              <div className="flex flex-col items-end shrink-0">
-                <span className="text-[11px] font-medium text-slate-400">
-                  จำนวนสินค้า
-                </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
+              {/* Items Count & Min Order Badge */}
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
                   <Package className="w-3.5 h-3.5 text-slate-500" />
                   {supplier._count?.items ?? 0} รายการ
                 </span>
+                {supplier.minOrderAmount > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
+                    ขั้นต่ำ ฿{supplier.minOrderAmount.toLocaleString("th-TH")}
+                  </span>
+                )}
               </div>
             </div>
 

@@ -91,6 +91,7 @@ export async function archiveAndResetWeeklyStock(note?: string) {
         status: item.status,
         remain: item.remain,
         ordered: orderQty,
+        isOrdered: item.isOrdered,
         lineTotal,
       };
     });
@@ -123,6 +124,7 @@ export async function archiveAndResetWeeklyStock(note?: string) {
             status: "NONE",
             remain: null,
             ordered: null,
+            isOrdered: false,
           },
         });
 

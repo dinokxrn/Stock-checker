@@ -1,24 +1,33 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useTransition } from "react";
 import Link from "next/link";
 import {
   Copy,
   Check,
   ExternalLink,
-  AlertTriangle,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Phone,
   Search,
-  Store,
   MessageCircle,
   Eye,
   X,
   XCircle,
+  AlertTriangle,
   ClipboardList,
+  Plus,
+  Minus,
+  CheckSquare,
+  Square,
+  Banknote,
+  CheckCircle2,
 } from "lucide-react";
+import {
+  updateItemStockStatus,
+  toggleItemOrderedStatus,
+  toggleSupplierItemsOrdered,
+} from "@/actions/stock";
 import { OrderScheduleAlert } from "@/components/OrderScheduleAlert";
 import { getSupplierScheduleStatus } from "@/lib/order-schedule";
 
@@ -31,6 +40,7 @@ export interface DashboardItem {
   status: string;
   remain?: number | null;
   ordered?: number | null;
+  isOrdered?: boolean;
   supplierId: string;
 }
 
@@ -51,7 +61,7 @@ interface OrderDashboardViewProps {
 type FilterTab = "active" | "out_of_stock" | "low_stock" | "all";
 
 export default function OrderDashboardView({ initialSuppliers }: OrderDashboardViewProps) {
-  const [suppliers] = useState<DashboardSupplier[]>(initialSuppliers);
+  const [suppliers, setSuppliers] = useState<DashboardSupplier[]>(initialSuppliers);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("active");
   const [expandedSuppliers, setExpandedSuppliers] = useState<Record<string, boolean>>({});
@@ -60,6 +70,15 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   const [previewSupplier, setPreviewSupplier] = useState<DashboardSupplier | null>(null);
   const [previewAllOpen, setPreviewAllOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  // Helper to format currency
+  const formatBaht = (amount: number) => {
+    return `฿${amount.toLocaleString("th-TH", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`;
+  };
 
   // Toggle accordion expand/collapse
   const toggleExpand = (supplierId: string) => {
@@ -67,6 +86,87 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       ...prev,
       [supplierId]: !prev[supplierId],
     }));
+  };
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((current) => (current === msg ? null : current));
+    }, 3000);
+  };
+
+  // Update ordered quantity on out-of-stock items directly in dashboard
+  const handleQuantityChange = (supplierId: string, itemId: string, delta: number) => {
+    let targetQty = 1;
+
+    setSuppliers((prev) =>
+      prev.map((s) => {
+        if (s.id !== supplierId) return s;
+        return {
+          ...s,
+          items: s.items.map((i) => {
+            if (i.id !== itemId) return i;
+            const current = i.ordered && i.ordered > 0 ? i.ordered : 1;
+            const next = Math.max(1, current + delta);
+            targetQty = next;
+            return { ...i, ordered: next };
+          }),
+        };
+      })
+    );
+
+    startTransition(async () => {
+      await updateItemStockStatus(itemId, "OUT_OF_STOCK", 0, targetQty);
+    });
+  };
+
+  // Toggle ordered checkbox for a single item
+  const handleToggleItemOrdered = (supplierId: string, itemId: string) => {
+    let nextState = false;
+
+    setSuppliers((prev) =>
+      prev.map((s) => {
+        if (s.id !== supplierId) return s;
+        return {
+          ...s,
+          items: s.items.map((i) => {
+            if (i.id !== itemId) return i;
+            nextState = !i.isOrdered;
+            return { ...i, isOrdered: nextState };
+          }),
+        };
+      })
+    );
+
+    startTransition(async () => {
+      await toggleItemOrderedStatus(itemId, nextState);
+    });
+
+    showToast(nextState ? "ทำเครื่องหมายว่าสั่งแล้ว ✓" : "เปลี่ยนสถานะเป็นยังไม่สั่ง");
+  };
+
+  // Bulk toggle ordered for all alert items of a supplier
+  const handleToggleSupplierAllOrdered = (supplierId: string, targetState: boolean) => {
+    setSuppliers((prev) =>
+      prev.map((s) => {
+        if (s.id !== supplierId) return s;
+        return {
+          ...s,
+          items: s.items.map((i) => {
+            if (i.status === "OUT_OF_STOCK" || i.status === "LOW_STOCK") {
+              return { ...i, isOrdered: targetState };
+            }
+            return i;
+          }),
+        };
+      })
+    );
+
+    startTransition(async () => {
+      await toggleSupplierItemsOrdered(supplierId, targetState);
+    });
+
+    showToast(targetState ? "ติ๊กสั่งแล้วทุกรายการ ✓" : "ยกเลิกสถานะสั่งแล้วทั้งหมด");
   };
 
   // Helper to format date for LINE message
@@ -81,22 +181,32 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     });
   };
 
-  // Generate LINE export formatted string for a single supplier (บอกเหลือ 0 ไม่ต้องสั่ง 1)
+  // Generate LINE export formatted string for a single supplier
   const generateLineMessage = (supplier: DashboardSupplier) => {
     const dateStr = getFormattedThaiDate();
     const outOfStockItems = supplier.items.filter((item) => item.status === "OUT_OF_STOCK");
     const lowStockItems = supplier.items.filter((item) => item.status === "LOW_STOCK");
 
+    let totalAmount = 0;
+    outOfStockItems.forEach((i) => {
+      const qty = i.ordered && i.ordered > 0 ? i.ordered : 1;
+      totalAmount += i.unitPrice * qty;
+    });
+
     const lines: string[] = [
-      `📦 สรุปสต็อก - ${supplier.name}`,
+      `📦 สรุปรายการสั่งซื้อ - ${supplier.name}`,
       `📅 วันที่: ${dateStr}`,
       `---------------------------------`,
     ];
 
     if (outOfStockItems.length > 0) {
-      lines.push(`🔴 สินค้าหมด (เหลือ 0):`);
+      lines.push(`🔴 สินค้าหมด (ต้องสั่ง):`);
       outOfStockItems.forEach((item, index) => {
-        lines.push(`${index + 1}. ${item.name} (เหลือ 0 ${item.unit})`);
+        const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
+        const lineTotal = item.unitPrice * qty;
+        const orderTag = item.isOrdered ? "[✓ สั่งแล้ว]" : "[รอสั่ง]";
+        const priceTag = item.unitPrice > 0 ? ` (@ ${formatBaht(item.unitPrice)} = ${formatBaht(lineTotal)})` : "";
+        lines.push(`${index + 1}. ${orderTag} ${item.name} - สั่ง ${qty} ${item.unit}${priceTag}`);
       });
     }
 
@@ -107,12 +217,27 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       lines.push(`🟡 สินค้าใกล้หมด:`);
       lowStockItems.forEach((item, index) => {
         const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
-        lines.push(`${index + 1}. ${item.name} (เหลือ ${remain} ${item.unit})`);
+        const orderTag = item.isOrdered ? "[✓ สั่งแล้ว]" : "[รอสั่ง]";
+        const priceTag = item.unitPrice > 0 ? ` (${formatBaht(item.unitPrice)}/${item.unit})` : "";
+        lines.push(`${index + 1}. ${orderTag} ${item.name} - เหลือ ${remain} ${item.unit}${priceTag}`);
       });
     }
 
     if (outOfStockItems.length === 0 && lowStockItems.length === 0) {
       lines.push(`(ไม่มีรายการสินค้าหมดหรือใกล้หมด)`);
+    }
+
+    if (totalAmount > 0) {
+      lines.push(`---------------------------------`);
+      lines.push(`💰 ยอดสั่งซื้อประมาณการ: ${formatBaht(totalAmount)}`);
+      if (supplier.minOrderAmount > 0) {
+        const diff = supplier.minOrderAmount - totalAmount;
+        if (diff > 0) {
+          lines.push(`🎯 ยอดสั่งขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (ขาดอีก ${formatBaht(diff)})`);
+        } else {
+          lines.push(`🎯 ยอดสั่งขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (✓ ครบยอดแล้ว)`);
+        }
+      }
     }
 
     if (supplier.note?.trim()) {
@@ -130,8 +255,10 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       s.items.some((i) => i.status === "OUT_OF_STOCK" || i.status === "LOW_STOCK")
     );
 
+    let grandTotal = 0;
+
     const lines: string[] = [
-      `📦 สรุปรายการสต็อกร้าน (แยกตามบริษัท)`,
+      `📦 สรุปรายการสั่งซื้อและสต็อก (แยกตามบริษัท)`,
       `📅 วันที่: ${dateStr}`,
       `=================================`,
     ];
@@ -145,14 +272,25 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       const outOfStock = supplier.items.filter((i) => i.status === "OUT_OF_STOCK");
       const lowStock = supplier.items.filter((i) => i.status === "LOW_STOCK");
 
+      let supplierTotal = 0;
+      outOfStock.forEach((i) => {
+        const qty = i.ordered && i.ordered > 0 ? i.ordered : 1;
+        supplierTotal += i.unitPrice * qty;
+      });
+      grandTotal += supplierTotal;
+
       lines.push(``);
       lines.push(`🏢 บริษัท: ${supplier.name}`);
       lines.push(`---------------------------------`);
 
       if (outOfStock.length > 0) {
-        lines.push(`🔴 สินค้าหมด:`);
+        lines.push(`🔴 สินค้าหมด (ต้องสั่ง):`);
         outOfStock.forEach((item, idx) => {
-          lines.push(`  ${idx + 1}. ${item.name} (เหลือ 0 ${item.unit})`);
+          const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
+          const lineTotal = item.unitPrice * qty;
+          const orderTag = item.isOrdered ? "[✓ สั่งแล้ว]" : "[รอสั่ง]";
+          const priceTag = item.unitPrice > 0 ? ` (@ ${formatBaht(item.unitPrice)} = ${formatBaht(lineTotal)})` : "";
+          lines.push(`  ${idx + 1}. ${orderTag} ${item.name} - สั่ง ${qty} ${item.unit}${priceTag}`);
         });
       }
 
@@ -161,14 +299,35 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
         lines.push(`🟡 สินค้าใกล้หมด:`);
         lowStock.forEach((item, idx) => {
           const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
-          lines.push(`  ${idx + 1}. ${item.name} (เหลือ ${remain} ${item.unit})`);
+          const orderTag = item.isOrdered ? "[✓ สั่งแล้ว]" : "[รอสั่ง]";
+          const priceTag = item.unitPrice > 0 ? ` (${formatBaht(item.unitPrice)}/${item.unit})` : "";
+          lines.push(`  ${idx + 1}. ${orderTag} ${item.name} - เหลือ ${remain} ${item.unit}${priceTag}`);
         });
+      }
+
+      if (supplierTotal > 0) {
+        lines.push(`💰 ยอดสั่งบริษัทนี้: ${formatBaht(supplierTotal)}`);
+        if (supplier.minOrderAmount > 0) {
+          const diff = supplier.minOrderAmount - supplierTotal;
+          if (diff > 0) {
+            lines.push(`🎯 ยอดขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (ขาดอีก ${formatBaht(diff)})`);
+          } else {
+            lines.push(`🎯 ยอดขั้นต่ำ: ${formatBaht(supplier.minOrderAmount)} (✓ ครบยอดแล้ว)`);
+          }
+        }
       }
 
       if (sIndex < suppliersWithAlerts.length - 1) {
         lines.push(`=================================`);
       }
     });
+
+    if (grandTotal > 0) {
+      lines.push(``);
+      lines.push(`=================================`);
+      lines.push(`💵 ยอดสั่งซื้อประมาณการรวมทุกบริษัท: ${formatBaht(grandTotal)}`);
+      lines.push(`=================================`);
+    }
 
     return lines.join("\n");
   };
@@ -205,7 +364,6 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
       } else {
-        // Fallback for older browsers
         const textarea = document.createElement("textarea");
         textarea.value = text;
         textarea.style.position = "fixed";
@@ -227,25 +385,44 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     }
   };
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage((current) => (current === msg ? null : current));
-    }, 3000);
-  };
-
-  // Calculate high-level metrics
+  // Calculate high-level metrics including pricing and ordered counts
   const supplierMetrics = useMemo(() => {
     return suppliers.map((supplier) => {
       const outOfStockItems = supplier.items.filter((item) => item.status === "OUT_OF_STOCK");
       const lowStockItems = supplier.items.filter((item) => item.status === "LOW_STOCK");
-      const hasAlerts = outOfStockItems.length > 0 || lowStockItems.length > 0;
+      const alertItems = [...outOfStockItems, ...lowStockItems];
+      const hasAlerts = alertItems.length > 0;
+
+      // Pricing
+      let estimatedOrderAmount = 0;
+      outOfStockItems.forEach((i) => {
+        const qty = i.ordered && i.ordered > 0 ? i.ordered : 1;
+        estimatedOrderAmount += i.unitPrice * qty;
+      });
+
+      // Ordered status count
+      const orderedCount = alertItems.filter((i) => Boolean(i.isOrdered)).length;
+      const allOrdered = alertItems.length > 0 && orderedCount === alertItems.length;
+
+      // Min order progress
+      const minOrder = supplier.minOrderAmount || 0;
+      const isMinMet = minOrder > 0 ? estimatedOrderAmount >= minOrder : true;
+      const progressPercent = minOrder > 0 ? Math.min(100, Math.round((estimatedOrderAmount / minOrder) * 100)) : 100;
+      const shortfall = Math.max(0, minOrder - estimatedOrderAmount);
 
       return {
         supplier,
         outOfStockItems,
         lowStockItems,
+        alertItems,
         hasAlerts,
+        estimatedOrderAmount,
+        orderedCount,
+        allOrdered,
+        minOrder,
+        isMinMet,
+        progressPercent,
+        shortfall,
       };
     });
   }, [suppliers]);
@@ -254,12 +431,19 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   const grandSummary = useMemo(() => {
     let totalOutOfStock = 0;
     let totalLowStock = 0;
+    let grandTotalOrderAmount = 0;
+    let totalAlertItemsCount = 0;
+    let totalOrderedItemsCount = 0;
     let suppliersWithOrdersCount = 0;
     let suppliersWithAlertsCount = 0;
 
     supplierMetrics.forEach((m) => {
       totalOutOfStock += m.outOfStockItems.length;
       totalLowStock += m.lowStockItems.length;
+      grandTotalOrderAmount += m.estimatedOrderAmount;
+      totalAlertItemsCount += m.alertItems.length;
+      totalOrderedItemsCount += m.orderedCount;
+
       if (m.outOfStockItems.length > 0) {
         suppliersWithOrdersCount += 1;
       }
@@ -271,6 +455,9 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     return {
       totalOutOfStock,
       totalLowStock,
+      grandTotalOrderAmount,
+      totalAlertItemsCount,
+      totalOrderedItemsCount,
       suppliersWithOrdersCount,
       suppliersWithAlertsCount,
       totalSuppliers: suppliers.length,
@@ -280,7 +467,6 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   // Filtered suppliers based on tab and search
   const filteredMetrics = useMemo(() => {
     return supplierMetrics.filter((m) => {
-      // Tab filter
       if (activeTab === "active" && !m.hasAlerts) {
         return false;
       }
@@ -291,7 +477,6 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
         return false;
       }
 
-      // Search query filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
         const matchesSupplier = m.supplier.name.toLowerCase().includes(query);
@@ -329,7 +514,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
         }}
       />
 
-      {/* Top Banner: Grand Summary */}
+      {/* Top Banner: Grand Summary with Price & Ordered Tracking */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-5 shadow-lg border border-slate-800 relative overflow-hidden">
         <div className="absolute right-0 top-0 -mt-4 -mr-4 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
 
@@ -343,7 +528,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 สรุปรายการสั่งซื้อและสต็อก
               </h1>
               <p className="text-[11px] text-slate-400">
-                รายการสินค้าที่ต้องสั่งซื้อและใกล้หมด แยกตามรายบริษัทคู่ค้า
+                รายการสินค้าที่ต้องสั่งซื้อ ราคาประมาณการ และสถานะการสั่ง
               </p>
             </div>
           </div>
@@ -352,31 +537,61 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
           </span>
         </div>
 
-        {/* Big Numbers Grid */}
-        <div className="grid grid-cols-2 gap-3 pt-2">
+        {/* 4-Grid Big Numbers */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
+          {/* Out of stock */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
             <span className="text-[11px] text-rose-300 font-semibold block mb-0.5 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-              สินค้าหมด (ต้องสั่ง)
+              สินค้าหมด
             </span>
-            <div className="text-2xl sm:text-3xl font-extrabold text-rose-400 tracking-tight">
+            <div className="text-xl sm:text-2xl font-extrabold text-rose-400 tracking-tight">
               {grandSummary.totalOutOfStock} <span className="text-xs font-normal text-slate-300">รายการ</span>
             </div>
             <div className="text-[10px] text-slate-400 mt-1">
-              จาก {grandSummary.suppliersWithOrdersCount} บริษัทคู่ค้า
+              จาก {grandSummary.suppliersWithOrdersCount} บริษัท
             </div>
           </div>
 
+          {/* Low stock */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
             <span className="text-[11px] text-amber-300 font-semibold block mb-0.5 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              สินค้าใกล้หมด
+              ใกล้หมด
             </span>
-            <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 tracking-tight">
+            <div className="text-xl sm:text-2xl font-extrabold text-amber-400 tracking-tight">
               {grandSummary.totalLowStock} <span className="text-xs font-normal text-slate-300">รายการ</span>
             </div>
             <div className="text-[10px] text-slate-400 mt-1">
-              สต็อกเหลือน้อย ควรเตรียมสั่งเพิ่ม
+              เตรียมสั่งเพิ่ม
+            </div>
+          </div>
+
+          {/* Grand Estimated Amount */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
+            <span className="text-[11px] text-emerald-300 font-semibold block mb-0.5 flex items-center gap-1">
+              <Banknote className="w-3.5 h-3.5 text-emerald-400" />
+              ยอดสั่งประมาณการ
+            </span>
+            <div className="text-xl sm:text-2xl font-extrabold text-emerald-400 tracking-tight">
+              {formatBaht(grandSummary.grandTotalOrderAmount)}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-1">
+              คำนวณจากราคาต่อหน่วย
+            </div>
+          </div>
+
+          {/* Ordered Progress */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
+            <span className="text-[11px] text-blue-300 font-semibold block mb-0.5 flex items-center gap-1">
+              <CheckSquare className="w-3.5 h-3.5 text-blue-400" />
+              สถานะการสั่ง
+            </span>
+            <div className="text-xl sm:text-2xl font-extrabold text-blue-400 tracking-tight">
+              {grandSummary.totalOrderedItemsCount} / {grandSummary.totalAlertItemsCount}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-1">
+              รายการที่สั่งแล้ว
             </div>
           </div>
         </div>
@@ -424,62 +639,62 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="ค้นหาชื่อคู่ค้า หรือชื่อสินค้าที่ต้องสั่ง..."
-            className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200/80 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 min-h-[44px] transition-all"
+            className="w-full pl-9 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full"
+              className="w-6 h-6 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+        {/* Tab Buttons */}
+        <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80">
           <button
             onClick={() => setActiveTab("active")}
-            className={`min-h-[38px] px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all touch-manipulation ${
+            className={`py-2 px-1 text-xs font-bold rounded-lg transition-all touch-manipulation ${
               activeTab === "active"
-                ? "bg-slate-900 text-white shadow-sm"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                ? "bg-white text-indigo-700 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            มีสินค้าต้องสั่ง/ใกล้หมด ({grandSummary.suppliersWithAlertsCount})
+            ต้องสั่ง ({grandSummary.suppliersWithAlertsCount})
           </button>
 
           <button
             onClick={() => setActiveTab("out_of_stock")}
-            className={`min-h-[38px] px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all touch-manipulation ${
+            className={`py-2 px-1 text-xs font-bold rounded-lg transition-all touch-manipulation ${
               activeTab === "out_of_stock"
-                ? "bg-rose-600 text-white shadow-sm"
-                : "bg-white text-rose-700 border border-rose-200 hover:bg-rose-50"
+                ? "bg-white text-rose-700 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            เฉพาะสินค้าหมด ({grandSummary.suppliersWithOrdersCount})
+            หมด ({grandSummary.totalOutOfStock})
           </button>
 
           <button
             onClick={() => setActiveTab("low_stock")}
-            className={`min-h-[38px] px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all touch-manipulation ${
+            className={`py-2 px-1 text-xs font-bold rounded-lg transition-all touch-manipulation ${
               activeTab === "low_stock"
-                ? "bg-amber-600 text-white shadow-sm"
-                : "bg-white text-amber-700 border border-amber-200 hover:bg-amber-50"
+                ? "bg-white text-amber-700 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            เฉพาะใกล้หมด ({supplierMetrics.filter((m) => m.lowStockItems.length > 0).length})
+            ใกล้หมด ({grandSummary.totalLowStock})
           </button>
 
           <button
             onClick={() => setActiveTab("all")}
-            className={`min-h-[38px] px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all touch-manipulation ${
+            className={`py-2 px-1 text-xs font-bold rounded-lg transition-all touch-manipulation ${
               activeTab === "all"
-                ? "bg-slate-900 text-white shadow-sm"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                ? "bg-white text-slate-800 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            คู่ค้าทั้งหมด ({suppliers.length})
+            ทั้งหมด ({suppliers.length})
           </button>
         </div>
       </div>
@@ -487,121 +702,131 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       {/* Supplier Order Cards List */}
       <div className="space-y-3.5">
         {filteredMetrics.length === 0 ? (
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center space-y-3 shadow-sm">
+          <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-              <ClipboardList className="w-6 h-6" />
+              <Search className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-800">
-                {grandSummary.suppliersWithOrdersCount === 0
-                  ? "ยังไม่มีสินค้าหมดสต็อกที่ต้องสั่งซื้อ"
-                  : "ไม่พบคู่ค้าตามเงื่อนไขที่เลือก"}
-              </h3>
-              <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1">
-                {grandSummary.suppliersWithOrdersCount === 0
-                  ? "เมื่อเดินตรวจสต็อกและแตะเลือกสถานะ 'สินค้าหมด (Out of Stock)' รายการสั่งซื้อจะปรากฏที่นี่ทันที"
-                  : "ลองเปลี่ยนตัวเลือกการกรอง หรือล้างคำค้นหาเพื่อดูรายการคู่ค้าอื่น"}
+              <p className="text-sm font-bold text-slate-700">ไม่พบคู่ค้าที่ตรงตามเงื่อนไข</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {searchQuery ? "ลองเปลี่ยนคำค้นหา หรือเลือกแท็บอื่น" : "ทุกรายการสต็อกอยู่ในระดับปกติ"}
               </p>
             </div>
-            {grandSummary.suppliersWithOrdersCount === 0 ? (
-              <Link
-                href="/"
-                className="inline-flex items-center justify-center gap-2 min-h-[48px] px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-sm active:scale-[0.98] transition-all touch-manipulation"
-              >
-                <ClipboardList className="w-4 h-4" />
-                ไปหน้าตรวจนับสต็อก
-              </Link>
-            ) : (
+            {searchQuery && (
               <button
-                onClick={() => {
-                  setActiveTab("all");
-                  setSearchQuery("");
-                }}
-                className="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold active:scale-[0.98] transition-all touch-manipulation"
+                onClick={() => setSearchQuery("")}
+                className="text-xs font-semibold text-indigo-600 hover:underline"
               >
-                ดูคู่ค้าทั้งหมด
+                ล้างคำค้นหา
               </button>
             )}
           </div>
         ) : (
-          filteredMetrics.map((item) => {
-            const { supplier, outOfStockItems, lowStockItems, hasAlerts } = item;
-            const isExpanded = !!expandedSuppliers[supplier.id];
-            const schedule = getSupplierScheduleStatus(supplier.orderDays);
-            const lineMessage = generateLineMessage(supplier);
-            const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineMessage)}`;
+          filteredMetrics.map((m) => {
+            const {
+              supplier,
+              outOfStockItems,
+              lowStockItems,
+              alertItems,
+              hasAlerts,
+              estimatedOrderAmount,
+              orderedCount,
+              allOrdered,
+              minOrder,
+              progressPercent,
+              shortfall,
+            } = m;
 
-            const cardBorderClass =
-              outOfStockItems.length > 0
-                ? "border-rose-200/90 shadow-rose-500/5"
-                : lowStockItems.length > 0
-                ? "border-amber-200/90 shadow-amber-500/5"
-                : "border-slate-200/80";
+            const isExpanded = Boolean(expandedSuppliers[supplier.id]);
+            const schedule = getSupplierScheduleStatus(supplier.orderDays);
+            const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
+              generateLineMessage(supplier)
+            )}`;
 
             return (
               <div
                 key={supplier.id}
-                className={`bg-white rounded-2xl border ${cardBorderClass} shadow-sm overflow-hidden transition-all duration-200`}
+                className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden shadow-xs ${
+                  hasAlerts
+                    ? "border-slate-300/80 hover:border-slate-400"
+                    : "border-slate-200/80 opacity-80"
+                }`}
               >
-                {/* Supplier Header Card */}
+                {/* Header Information Card */}
                 <div className="p-4 sm:p-5 space-y-3">
+                  {/* Top line: Name & Order Status Pill */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Store className="w-4 h-4 text-slate-400 shrink-0" />
-                        <h2 className="text-base font-bold text-slate-900 truncate">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-base font-bold text-slate-800 leading-tight">
                           {supplier.name}
                         </h2>
-                        {supplier.contactPhone && (
-                          <a
-                            href={`tel:${supplier.contactPhone}`}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-medium hover:bg-slate-200 transition-colors"
-                          >
-                            <Phone className="w-2.5 h-2.5 text-slate-400" />
-                            {supplier.contactPhone}
-                          </a>
-                        )}
-                      </div>
-
-                      {supplier.note && (
-                        <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
-                          {supplier.note}
-                        </p>
-                      )}
-
-                      {schedule && (
-                        <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                        {schedule && (
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border ${schedule.badgeClass}`}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                              schedule.isToday
+                                ? "bg-rose-100 text-rose-800 animate-pulse"
+                                : schedule.isTomorrow
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
                           >
                             {schedule.badgeText}
                           </span>
+                        )}
+                      </div>
+
+                      {supplier.contactPhone && (
+                        <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500">
+                          <Phone className="w-3.5 h-3.5 text-slate-400" />
+                          <a
+                            href={`tel:${supplier.contactPhone}`}
+                            className="hover:text-blue-600 hover:underline"
+                          >
+                            {supplier.contactPhone}
+                          </a>
                         </div>
                       )}
                     </div>
 
-                    {/* Status Badge */}
-                    <div className="shrink-0">
-                      {outOfStockItems.length > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border border-rose-200 bg-rose-50 text-rose-700">
-                          <XCircle className="w-3.5 h-3.5 text-rose-500" />
-                          ต้องสั่ง {outOfStockItems.length} รายการ
-                        </span>
-                      ) : lowStockItems.length > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border border-amber-200 bg-amber-50 text-amber-700">
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                          ใกล้หมด {lowStockItems.length} รายการ
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200 bg-slate-100 text-slate-500">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
-                          สต็อกมีครบ
-                        </span>
-                      )}
+                    {/* Total Estimated Order Price Badge */}
+                    <div className="text-right shrink-0">
+                      <div className="text-[11px] font-medium text-slate-400">ยอดสั่งซื้อ</div>
+                      <div className="text-base sm:text-lg font-black text-slate-900">
+                        {formatBaht(estimatedOrderAmount)}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Stock Item Counts Breakdown Pills */}
+                  {/* Min Order Progress Bar (if minOrderAmount > 0) */}
+                  {minOrder > 0 && (
+                    <div className="space-y-1.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200/60">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-slate-600">
+                          ยอดสั่งขั้นต่ำ: <strong className="text-slate-800">{formatBaht(minOrder)}</strong>
+                        </span>
+                        <span
+                          className={`font-bold ${
+                            shortfall === 0 ? "text-emerald-600" : "text-amber-600"
+                          }`}
+                        >
+                          {shortfall === 0
+                            ? "✓ ครบยอดสั่งขั้นต่ำแล้ว"
+                            : `ขาดอีก ${formatBaht(shortfall)}`}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 rounded-full ${
+                            shortfall === 0 ? "bg-emerald-500" : "bg-amber-500"
+                          }`}
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stock Item Counts & Ordered Status Breakdown */}
                   <div className="flex items-center gap-2 pt-1 text-xs flex-wrap">
                     <span className="px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-100 text-rose-700 font-bold flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
@@ -611,15 +836,23 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                       ใกล้หมด: {lowStockItems.length} รายการ
                     </span>
-                    <span className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 font-medium">
-                      รวมทั้งหมด: {supplier.items.length} รายการ
-                    </span>
+                    {alertItems.length > 0 && (
+                      <span
+                        className={`px-2.5 py-1 rounded-lg border font-bold flex items-center gap-1 ${
+                          allOrdered
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                            : "bg-blue-50 border-blue-200 text-blue-800"
+                        }`}
+                      >
+                        <CheckSquare className="w-3.5 h-3.5" />
+                        สั่งแล้ว: {orderedCount} / {alertItems.length}
+                      </span>
+                    )}
                   </div>
 
                   {/* Action Buttons: Copy to LINE, Open LINE */}
                   {hasAlerts ? (
                     <div className="pt-2 grid grid-cols-2 gap-2">
-                      {/* Button 1: Copy to LINE */}
                       <button
                         onClick={() => handleCopyToClipboard(supplier)}
                         className={`min-h-[48px] px-3 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-all touch-manipulation shadow-sm ${
@@ -641,7 +874,6 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         )}
                       </button>
 
-                      {/* Button 2: Direct Open in LINE (URL scheme) */}
                       <a
                         href={lineUrl}
                         target="_blank"
@@ -689,43 +921,116 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         )}
                       </button>
 
-                      <button
-                        onClick={() => setPreviewSupplier(supplier)}
-                        className="min-h-[40px] text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-slate-100 touch-manipulation transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>ดูตัวอย่างข้อความ</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {/* Quick toggle all ordered for this supplier */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSupplierAllOrdered(supplier.id, !allOrdered)}
+                          className="min-h-[36px] text-xs font-bold text-slate-600 hover:text-emerald-700 flex items-center gap-1 py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-emerald-50 border border-slate-200 transition-colors"
+                        >
+                          {allOrdered ? (
+                            <>
+                              <Square className="w-3.5 h-3.5 text-slate-400" />
+                              <span>ยกเลิกสั่งแล้ว</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>ติ๊กสั่งแล้วทั้งหมด</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => setPreviewSupplier(supplier)}
+                          className="min-h-[36px] text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-slate-100 touch-manipulation transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>ตัวอย่าง</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {/* Expanded Item Breakdown Table / List */}
                 {hasAlerts && isExpanded && (
-                  <div className="bg-slate-50/70 border-t border-slate-200/80 p-4 space-y-3">
+                  <div className="bg-slate-50/70 border-t border-slate-200/80 p-4 space-y-4">
                     {/* Out of Stock Section */}
                     {outOfStockItems.length > 0 && (
                       <div className="space-y-2">
-                        <div className="text-[11px] font-bold text-rose-600 uppercase tracking-wider flex items-center gap-1">
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>สินค้าที่หมดแล้ว ({outOfStockItems.length} รายการ)</span>
+                        <div className="text-[11px] font-bold text-rose-600 uppercase tracking-wider flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>สินค้าที่หมดแล้ว ({outOfStockItems.length} รายการ)</span>
+                          </span>
+                          <span className="text-slate-400 font-normal">ปรับจำนวนสั่งซื้อ หรือติ๊กเมื่อสั่งแล้ว</span>
                         </div>
 
                         <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
                           {outOfStockItems.map((item, idx) => {
+                            const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
+                            const lineTotal = item.unitPrice * qty;
+                            const isOrdered = Boolean(item.isOrdered);
+
                             return (
                               <div
                                 key={item.id}
-                                className="p-3 flex items-center justify-between gap-2 hover:bg-slate-50/50 transition-colors"
+                                className={`p-3 flex items-center justify-between gap-2.5 transition-colors ${
+                                  isOrdered ? "bg-emerald-50/30" : "hover:bg-slate-50/50"
+                                }`}
                               >
+                                {/* Checkbox "สั่งแล้ว" */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleItemOrdered(supplier.id, item.id)}
+                                  className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all touch-manipulation shrink-0 ${
+                                    isOrdered
+                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
+                                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
+                                  }`}
+                                  title={isOrdered ? "แตะเพื่อเปลี่ยนเป็นยังไม่สั่ง" : "แตะเพื่อติ๊กว่าสั่งแล้ว"}
+                                >
+                                  {isOrdered ? (
+                                    <>
+                                      <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                                      <span>สั่งแล้ว</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Square className="w-4 h-4 text-slate-400 shrink-0" />
+                                      <span>รอสั่ง</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                {/* Name & Price Info */}
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-xs font-medium text-slate-400 w-4">
                                       {idx + 1}.
                                     </span>
-                                    <span className="text-xs font-bold text-slate-800 truncate">
+                                    <span
+                                      className={`text-xs font-bold truncate ${
+                                        isOrdered ? "text-slate-500 line-through" : "text-slate-800"
+                                      }`}
+                                    >
                                       {item.name}
                                     </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5 ml-5 text-[11px] text-slate-500">
+                                    <span>
+                                      ราคา:{" "}
+                                      <strong className="text-slate-700">
+                                        {item.unitPrice > 0 ? formatBaht(item.unitPrice) : "0"}
+                                      </strong>{" "}
+                                      / {item.unit}
+                                    </span>
+                                    {item.unitPrice > 0 && (
+                                      <span className="text-rose-600 font-bold">
+                                        = {formatBaht(lineTotal)}
+                                      </span>
+                                    )}
                                   </div>
                                   {item.note && (
                                     <div className="text-[11px] text-slate-400 ml-5 mt-0.5">
@@ -734,10 +1039,32 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                   )}
                                 </div>
 
-                                {/* Out of Stock status: เหลือ 0 ไม่ต้องสั่ง 1 */}
-                                <div className="shrink-0 text-right">
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                    เหลือ 0 {item.unit}
+                                {/* Quantity Steppers [-] [qty] [+] */}
+                                <div className="shrink-0 flex items-center gap-1.5">
+                                  <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuantityChange(supplier.id, item.id, -1)}
+                                      disabled={qty <= 1}
+                                      className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 disabled:opacity-30 rounded transition-all touch-manipulation"
+                                      title="ลดจำนวน"
+                                    >
+                                      <Minus className="w-3 h-3" />
+                                    </button>
+                                    <span className="min-w-[28px] text-center text-xs font-extrabold text-slate-800">
+                                      {qty}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuantityChange(supplier.id, item.id, 1)}
+                                      className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 rounded transition-all touch-manipulation"
+                                      title="เพิ่มจำนวน"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                  <span className="text-[11px] font-bold text-slate-600">
+                                    {item.unit}
                                   </span>
                                 </div>
                               </div>
@@ -758,18 +1085,55 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
                           {lowStockItems.map((item, idx) => {
                             const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
+                            const isOrdered = Boolean(item.isOrdered);
+
                             return (
                               <div
                                 key={item.id}
-                                className="p-3 flex items-center justify-between gap-2 hover:bg-slate-50/50 transition-colors"
+                                className={`p-3 flex items-center justify-between gap-2.5 transition-colors ${
+                                  isOrdered ? "bg-emerald-50/30" : "hover:bg-slate-50/50"
+                                }`}
                               >
+                                {/* Checkbox "สั่งแล้ว" */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleItemOrdered(supplier.id, item.id)}
+                                  className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all touch-manipulation shrink-0 ${
+                                    isOrdered
+                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
+                                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
+                                  }`}
+                                  title={isOrdered ? "แตะเพื่อเปลี่ยนเป็นยังไม่สั่ง" : "แตะเพื่อติ๊กว่าสั่งแล้ว"}
+                                >
+                                  {isOrdered ? (
+                                    <>
+                                      <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                                      <span>สั่งแล้ว</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Square className="w-4 h-4 text-slate-400 shrink-0" />
+                                      <span>รอสั่ง</span>
+                                    </>
+                                  )}
+                                </button>
+
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-xs font-medium text-slate-400 w-4">
                                       {idx + 1}.
                                     </span>
-                                    <span className="text-xs font-bold text-slate-800 truncate">
+                                    <span
+                                      className={`text-xs font-bold truncate ${
+                                        isOrdered ? "text-slate-500 line-through" : "text-slate-800"
+                                      }`}
+                                    >
                                       {item.name}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5 ml-5 text-[11px] text-slate-500">
+                                    <span>
+                                      ราคา: {item.unitPrice > 0 ? formatBaht(item.unitPrice) : "0"} / {item.unit}
                                     </span>
                                   </div>
                                   {item.note && (
@@ -808,7 +1172,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                   <MessageCircle className="w-4 h-4" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  ตัวอย่างข้อความสั่งซื้อ (LINE Message Preview)
+                  ตัวอย่างข้อความสั่งซื้อ - {previewSupplier.name}
                 </h3>
               </div>
               <button

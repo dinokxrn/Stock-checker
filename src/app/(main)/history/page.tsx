@@ -32,6 +32,7 @@ export default async function HistoryPage() {
       status: i.status,
       remain: i.remain,
       ordered: i.ordered,
+      isOrdered: i.isOrdered,
       lineTotal: i.lineTotal,
     })),
   }));

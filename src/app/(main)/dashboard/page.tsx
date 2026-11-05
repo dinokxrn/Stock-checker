@@ -32,6 +32,7 @@ export default async function DashboardPage() {
       status: i.status,
       remain: i.remain,
       ordered: i.ordered,
+      isOrdered: i.isOrdered,
       supplierId: i.supplierId,
     })),
   }));

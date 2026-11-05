@@ -36,6 +36,7 @@ model Item {
   status     String   @default("NONE") // NONE, IN_STOCK, LOW_STOCK, OUT_OF_STOCK
   remain     Float?
   ordered    Float?
+  isOrdered  Boolean  @default(false)
   sortOrder  Int      @default(0)
   supplierId String
   supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
@@ -69,6 +70,7 @@ model SnapshotItem {
   status       String
   remain       Float?
   ordered      Float?
+  isOrdered    Boolean         @default(false)
   lineTotal    Float           @default(0)
 
   @@index([snapshotId])

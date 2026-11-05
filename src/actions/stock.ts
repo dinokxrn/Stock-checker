@@ -88,6 +88,62 @@ export async function updateItemStockStatus(
 }
 
 /**
+ * Toggle or set ordered status for an item (e.g. "สั่งแล้ว" / "ยังไม่สั่ง")
+ */
+export async function toggleItemOrderedStatus(itemId: string, isOrdered?: boolean) {
+  try {
+    if (!itemId) {
+      return { success: false, error: "ไม่พบรหัสสินค้า" };
+    }
+
+    let nextState = isOrdered;
+    if (nextState === undefined) {
+      const current = await prisma.item.findUnique({
+        where: { id: itemId },
+        select: { isOrdered: true },
+      });
+      nextState = !current?.isOrdered;
+    }
+
+    const updated = await prisma.item.update({
+      where: { id: itemId },
+      data: { isOrdered: nextState },
+    });
+
+    safeRevalidate();
+    return { success: true, isOrdered: updated.isOrdered };
+  } catch (error) {
+    console.error("Failed to toggle item ordered status:", error);
+    return { success: false, error: "ไม่สามารถอัปเดตสถานะการสั่งซื้อได้" };
+  }
+}
+
+/**
+ * Bulk toggle ordered status for all out-of-stock / low-stock items of a supplier
+ */
+export async function toggleSupplierItemsOrdered(supplierId: string, isOrdered: boolean) {
+  try {
+    if (!supplierId) {
+      return { success: false, error: "ไม่พบรหัสบริษัทคู่ค้า" };
+    }
+
+    await prisma.item.updateMany({
+      where: {
+        supplierId,
+        status: { in: ["OUT_OF_STOCK", "LOW_STOCK"] },
+      },
+      data: { isOrdered },
+    });
+
+    safeRevalidate();
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to toggle supplier items ordered status:", error);
+    return { success: false, error: "ไม่สามารถอัปเดตสถานะการสั่งซื้อของบริษัทได้" };
+  }
+}
+
+/**
  * Fetch all items formatted for stock checking with supplier information.
  */
 export async function getStockItems(supplierId?: string, search?: string, status?: StockStatus) {

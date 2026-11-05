@@ -226,12 +226,16 @@ export function ItemList({
               </div>
             </div>
 
-            {/* Middle row: Unit and Details */}
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-xs text-slate-600">
+            {/* Middle row: Unit, Price and Details */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-xs text-slate-600">
                 <span className="text-[11px] font-medium text-slate-400">หน่วยนับ:</span>
                 <span className="px-2.5 py-0.5 rounded-md bg-slate-100 font-semibold text-slate-700">
                   {item.unit}
+                </span>
+                <span className="text-[11px] font-medium text-slate-400 ml-1">ราคา:</span>
+                <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 font-bold text-emerald-700 border border-emerald-200">
+                  ฿{item.unitPrice.toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                 </span>
               </div>
 

@@ -25,6 +25,7 @@ export interface StockItem {
   status: string;
   remain: number | null;
   ordered: number | null;
+  isOrdered?: boolean;
   supplierId: string;
   supplier?: {
     id: string;
@@ -54,6 +55,9 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
   );
   const [localRemain, setLocalRemain] = useState<number>(
     item.remain !== null && item.remain !== undefined ? item.remain : 0
+  );
+  const [localOrdered, setLocalOrdered] = useState<number>(
+    item.ordered !== null && item.ordered !== undefined && item.ordered > 0 ? item.ordered : 1
   );
   const [hasPendingConfirmation, setHasPendingConfirmation] = useState<boolean>(false);
   const [showZeroPrompt, setShowZeroPrompt] = useState<boolean>(false);
@@ -88,7 +92,9 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
   // Confirm button handler
   const handleConfirm = useCallback(() => {
     if (localStatus === "OUT_OF_STOCK") {
-      commitUpdate("OUT_OF_STOCK", 0, 1);
+      const orderVal = localOrdered >= 1 ? localOrdered : 1;
+      setLocalOrdered(orderVal);
+      commitUpdate("OUT_OF_STOCK", 0, orderVal);
     } else if (localStatus === "LOW_STOCK") {
       const remainVal = localRemain >= 0 ? localRemain : 0;
       // Prompt user if remain is 0 for LOW_STOCK
@@ -103,13 +109,14 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
       setLocalRemain(remainVal);
       commitUpdate(localStatus, remainVal, null);
     }
-  }, [localStatus, localRemain, commitUpdate]);
+  }, [localStatus, localRemain, localOrdered, commitUpdate]);
 
   // Zero-remain prompt handlers
   const handleConvertToOutOfStock = () => {
     setShowZeroPrompt(false);
     setLocalStatus("OUT_OF_STOCK");
-    commitUpdate("OUT_OF_STOCK", 0, 1);
+    const orderVal = localOrdered >= 1 ? localOrdered : 1;
+    commitUpdate("OUT_OF_STOCK", 0, orderVal);
   };
 
   const handleKeepLowStockZero = () => {
@@ -125,7 +132,8 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
   const isChanged =
     hasPendingConfirmation ||
     localStatus !== item.status ||
-    (localStatus === "LOW_STOCK" && localRemain !== item.remain);
+    (localStatus === "LOW_STOCK" && localRemain !== item.remain) ||
+    (localStatus === "OUT_OF_STOCK" && localOrdered !== item.ordered);
 
   // Stepper handlers for Remain
   const handleRemainStep = (delta: number) => {
@@ -137,6 +145,19 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
   const handleRemainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0);
     setLocalRemain(val);
+    setHasPendingConfirmation(true);
+  };
+
+  // Stepper handlers for Ordered (when OUT_OF_STOCK)
+  const handleOrderedStep = (delta: number) => {
+    const nextVal = Math.max(1, localOrdered + delta);
+    setLocalOrdered(nextVal);
+    setHasPendingConfirmation(true);
+  };
+
+  const handleOrderedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value === "" ? 1 : Math.max(1, Number(e.target.value) || 1);
+    setLocalOrdered(val);
     setHasPendingConfirmation(true);
   };
 
@@ -185,6 +206,12 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
               <Tag className="w-3 h-3 text-slate-500" />
               <span>หน่วย: {item.unit}</span>
             </span>
+
+            {item.unitPrice > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                ฿{item.unitPrice.toLocaleString("th-TH")} / {item.unit}
+              </span>
+            )}
 
             {item.note && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800">
@@ -370,31 +397,132 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
         </div>
       )}
 
-      {/* OUT OF STOCK: Confirm button only (no quantity input needed) */}
+      {/* OUT OF STOCK: Order quantity input, price preview, and confirm button */}
       {localStatus === "OUT_OF_STOCK" && (
-        <div className="mt-1 pt-1">
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={isPending}
-            className={`w-full min-h-[46px] py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] touch-manipulation ${
-              isChanged
-                ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-rose-500/25 ring-2 ring-rose-400/40"
-                : "bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200"
-            }`}
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>กำลังบันทึก...</span>
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4" />
-                <span>{isChanged ? "ยืนยันสินค้าหมด" : "บันทึกสินค้าหมดแล้ว"}</span>
-              </>
-            )}
-          </button>
+        <div className="mt-1 p-3 bg-white/90 border border-rose-200/80 rounded-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <span>จำนวนที่ต้องการสั่ง (Order Qty)</span>
+              <span className="text-slate-400 font-normal">({item.unit})</span>
+            </label>
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+              สินค้าหมด (ต้องสั่ง)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Stepper -1 */}
+            <button
+              type="button"
+              onClick={() => handleOrderedStep(-1)}
+              disabled={localOrdered <= 1}
+              className="min-h-[48px] min-w-[48px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 text-slate-700 rounded-xl flex items-center justify-center font-bold touch-manipulation transition-colors"
+            >
+              <Minus className="w-5 h-5" />
+            </button>
+
+            {/* Direct Number Input */}
+            <div className="relative flex-1">
+              <input
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={localOrdered}
+                onChange={handleOrderedChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleConfirm();
+                  }
+                }}
+                className="w-full min-h-[48px] text-center text-lg font-bold text-rose-700 bg-rose-50/50 border border-rose-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 pointer-events-none">
+                {item.unit}
+              </span>
+            </div>
+
+            {/* Stepper +1 */}
+            <button
+              type="button"
+              onClick={() => handleOrderedStep(1)}
+              className="min-h-[48px] min-w-[48px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 rounded-xl flex items-center justify-center font-bold touch-manipulation transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Quick Stepper Pills and Subtotal Preview */}
+          <div className="flex items-center justify-between gap-1.5 pt-1 flex-wrap">
+            <div className="text-xs text-slate-600 font-medium">
+              {item.unitPrice > 0 ? (
+                <span>
+                  ยอดสั่งประมาณการ:{" "}
+                  <strong className="text-rose-700 font-bold">
+                    ฿{(localOrdered * item.unitPrice).toLocaleString("th-TH", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2,
+                    })}
+                  </strong>
+                </span>
+              ) : (
+                <span className="text-slate-400 text-[11px]">ไม่มียูนิตไพรซ์</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-slate-400 mr-0.5">ปุ่มด่วน:</span>
+              {[1, 5, 10].map((step) => (
+                <button
+                  key={step}
+                  type="button"
+                  onClick={() => {
+                    setLocalOrdered(step);
+                    setHasPendingConfirmation(true);
+                  }}
+                  className="px-2.5 py-1 min-h-[36px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg touch-manipulation transition-colors"
+                >
+                  {step}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Confirm Button for Out of Stock */}
+          <div className="pt-1.5">
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isPending}
+              className={`w-full min-h-[46px] py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] touch-manipulation ${
+                isChanged
+                  ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-rose-500/25 ring-2 ring-rose-400/40"
+                  : "bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200"
+              }`}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>กำลังบันทึก...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>
+                    {isChanged ? "ยืนยันการสั่ง (" : "บันทึกสั่งแล้ว ("}
+                    {localOrdered} {item.unit}
+                    {item.unitPrice > 0 &&
+                      ` - ฿${(localOrdered * item.unitPrice).toLocaleString("th-TH", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                      })}`}
+                    )
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
 

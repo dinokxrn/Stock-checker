@@ -154,6 +154,15 @@ export function WeeklyResetModal({
                 </div>
               </div>
             </div>
+
+            {stats.totalOrderAmount > 0 && (
+              <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200/80 flex items-center justify-between text-xs">
+                <span className="text-emerald-800 font-semibold">ยอดสั่งซื้อประมาณการรวม:</span>
+                <span className="text-sm font-extrabold text-emerald-700">
+                  ฿{stats.totalOrderAmount.toLocaleString("th-TH")}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Optional Note / Memo */}

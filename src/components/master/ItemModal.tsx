@@ -185,20 +185,47 @@ export function ItemModal({
             </select>
           </div>
 
-          {/* Unit Input */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-              <span>หน่วยนับสินค้า (Unit)</span>
-              <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              placeholder="เช่น ชิ้น, ลัง, ถุง, กล่อง, แพ็ค"
-              className="w-full px-3.5 py-3 text-base text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]"
-            />
+          {/* Price & Unit (2 Columns) */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Unit Price */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                <span>ราคาต่อหน่วย (฿)</span>
+                <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-sm">
+                  ฿
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  inputMode="decimal"
+                  required
+                  value={unitPrice}
+                  onChange={(e) => setUnitPrice(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full pl-8 pr-3 py-3 text-base font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]"
+                />
+              </div>
+            </div>
+
+            {/* Unit */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                <span>หน่วยนับสินค้า</span>
+                <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="เช่น ชิ้น, ลัง, ถุง"
+                className="w-full px-3.5 py-3 text-base text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]"
+              />
+            </div>
           </div>
 
           {/* Quick Unit Suggestion Pills */}

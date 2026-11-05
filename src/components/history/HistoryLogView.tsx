@@ -30,6 +30,7 @@ export interface SnapshotItemData {
   status: string;
   remain: number | null;
   ordered: number | null;
+  isOrdered?: boolean;
   lineTotal: number;
 }
 
