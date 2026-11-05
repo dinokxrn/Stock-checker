@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { KeyRound, X, Check, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { changePinAction } from "@/actions/auth";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface PinSettingsModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface PinSettingsModalProps {
 }
 
 export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
+  const { t, lang } = useLanguage();
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -35,22 +37,22 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
     setError(null);
 
     if (!currentPin) {
-      setError("กรุณาระบุรหัส PIN ปัจจุบัน");
+      setError(t("val_current_pin_required"));
       return;
     }
 
     if (!newPin || !/^\d{4}$/.test(newPin)) {
-      setError("รหัส PIN ใหม่ต้องเป็นตัวเลข 4 หลัก");
+      setError(t("val_new_pin_format"));
       return;
     }
 
     if (newPin !== confirmPin) {
-      setError("รหัส PIN ใหม่และการยืนยันไม่ตรงกัน");
+      setError(t("val_pin_mismatch"));
       return;
     }
 
     if (currentPin === newPin) {
-      setError("รหัส PIN ใหม่ต้องไม่ซ้ำกับรหัส PIN เดิม");
+      setError(t("val_pin_must_differ"));
       return;
     }
 
@@ -63,10 +65,10 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
           handleClose();
         }, 1200);
       } else {
-        setError(res.error || "ไม่สามารถเปลี่ยนรหัส PIN ได้");
+        setError(res.error || (lang === "en" ? "Failed to change PIN" : "ไม่สามารถเปลี่ยนรหัส PIN ได้"));
       }
     } catch {
-      setError("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่");
+      setError(t("network_error"));
     } finally {
       setIsLoading(false);
     }
@@ -88,9 +90,9 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
             </div>
             <div>
               <h3 id="pin-settings-title" className="text-base font-bold text-slate-800">
-                เปลี่ยนรหัสผ่าน PIN
+                {t("pin_modal_title")}
               </h3>
-              <p className="text-xs text-slate-500">สำหรับเข้าใช้งานระบบ</p>
+              <p className="text-xs text-slate-500">{t("pin_modal_subtitle")}</p>
             </div>
           </div>
           <button
@@ -98,6 +100,7 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
             onClick={handleClose}
             disabled={isLoading}
             className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
+            aria-label={t("close")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -115,7 +118,7 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
           {success && (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
               <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>เปลี่ยนรหัส PIN สำเร็จเรียบร้อยแล้ว!</span>
+              <span>{t("pin_change_success")}</span>
             </div>
           )}
 
@@ -127,14 +130,14 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
               className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1.5 transition-colors"
             >
               {showPins ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-slate-400" />}
-              <span>{showPins ? "ซ่อนตัวเลข" : "แสดงตัวเลข"}</span>
+              <span>{showPins ? t("hide_digits") : t("show_digits")}</span>
             </button>
           </div>
 
           {/* Current PIN */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              รหัส PIN ปัจจุบัน <span className="text-rose-500">*</span>
+              {t("current_pin_label")} <span className="text-rose-500">*</span>
             </label>
             <input
               type={showPins ? "text" : "password"}
@@ -143,7 +146,7 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
               maxLength={4}
               value={currentPin}
               onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, ""))}
-              placeholder="ระบุรหัสเดิม (ค่าเริ่มต้น 1234)"
+              placeholder={t("current_pin_placeholder")}
               disabled={isLoading || success}
               className="w-full h-12 px-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base font-mono tracking-widest text-slate-800 placeholder:text-slate-400 placeholder:font-sans placeholder:tracking-normal placeholder:text-xs"
             />
@@ -152,7 +155,7 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
           {/* New PIN */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              รหัส PIN ใหม่ (4 หลัก) <span className="text-rose-500">*</span>
+              {t("new_pin_label")} <span className="text-rose-500">*</span>
             </label>
             <input
               type={showPins ? "text" : "password"}
@@ -161,7 +164,7 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
               maxLength={4}
               value={newPin}
               onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-              placeholder="ระบุตัวเลข 4 หลัก"
+              placeholder={t("new_pin_placeholder")}
               disabled={isLoading || success}
               className="w-full h-12 px-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base font-mono tracking-widest text-slate-800 placeholder:text-slate-400 placeholder:font-sans placeholder:tracking-normal placeholder:text-xs"
             />
@@ -170,7 +173,7 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
           {/* Confirm New PIN */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              ยืนยันรหัส PIN ใหม่ <span className="text-rose-500">*</span>
+              {t("confirm_pin_label")} <span className="text-rose-500">*</span>
             </label>
             <input
               type={showPins ? "text" : "password"}
@@ -179,7 +182,7 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
               maxLength={4}
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
-              placeholder="กรอกรหัสใหม่อีกครั้ง"
+              placeholder={t("confirm_pin_placeholder")}
               disabled={isLoading || success}
               className="w-full h-12 px-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base font-mono tracking-widest text-slate-800 placeholder:text-slate-400 placeholder:font-sans placeholder:tracking-normal placeholder:text-xs"
             />
@@ -193,7 +196,7 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
               disabled={isLoading}
               className="flex-1 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 font-medium text-sm hover:bg-slate-50 active:bg-slate-100 transition-colors"
             >
-              ยกเลิก
+              {t("cancel")}
             </button>
             <button
               type="submit"
@@ -203,10 +206,10 @@ export function PinSettingsModal({ isOpen, onClose }: PinSettingsModalProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>กำลังบันทึก...</span>
+                  <span>{t("loading")}</span>
                 </>
               ) : (
-                <span>บันทึกรหัสใหม่</span>
+                <span>{t("save_new_pin_btn")}</span>
               )}
             </button>
           </div>

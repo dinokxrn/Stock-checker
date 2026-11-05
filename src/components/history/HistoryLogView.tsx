@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { deleteSnapshotAction } from "@/actions/snapshot";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   History,
   Calendar,
@@ -50,6 +51,8 @@ interface HistoryLogViewProps {
 }
 
 export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps) {
+  const { t, lang } = useLanguage();
+  const isEn = lang === "en";
   const [snapshots, setSnapshots] = useState<SnapshotArchiveData[]>(initialSnapshots);
   const [expandedSnapshots, setExpandedSnapshots] = useState<Record<string, boolean>>({});
   const [selectedSupplierFilter, setSelectedSupplierFilter] = useState<Record<string, string>>({});
@@ -64,11 +67,11 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Format date to Thai Buddhist Era
+  // Format date to locale
   const formatThaiDate = (dateVal: Date | string) => {
     try {
       const date = new Date(dateVal);
-      return new Intl.DateTimeFormat("th-TH", {
+      return new Intl.DateTimeFormat(isEn ? "en-US" : "th-TH", {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -103,29 +106,41 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
       );
       return matchNote || matchDate || matchItem;
     });
-  }, [snapshots, searchQuery]);
+  }, [snapshots, searchQuery, isEn]);
 
   // Export Snapshot to UTF-8 BOM CSV
   const handleExportCsv = (snapshot: SnapshotArchiveData) => {
     try {
       const bom = "\uFEFF";
-      const headers = [
-        "ลำดับ",
-        "คู่ค้า",
-        "ชื่อสินค้า",
-        "หน่วย",
-        "ราคาต่อหน่วย(บาท)",
-        "สถานะ",
-        "คงเหลือ",
-        "จำนวนที่สั่ง",
-        "ยอดรวม(บาท)",
-      ];
+      const headers = isEn
+        ? [
+            t("csv_header_no"),
+            t("csv_header_supplier"),
+            t("csv_header_item_name"),
+            t("csv_header_unit"),
+            t("csv_header_unit_price"),
+            t("csv_header_status"),
+            t("csv_header_remain"),
+            t("csv_header_order_qty"),
+            t("csv_header_line_total"),
+          ]
+        : [
+            "ลำดับ",
+            "คู่ค้า",
+            "ชื่อสินค้า",
+            "หน่วย",
+            "ราคาต่อหน่วย(บาท)",
+            "สถานะ",
+            "คงเหลือ",
+            "จำนวนที่สั่ง",
+            "ยอดรวม(บาท)",
+          ];
 
       const rows = snapshot.items.map((item, index) => {
-        let statusText = "ยังไม่นับ";
-        if (item.status === "IN_STOCK") statusText = "มีพอ";
-        else if (item.status === "LOW_STOCK") statusText = "ใกล้หมด";
-        else if (item.status === "OUT_OF_STOCK") statusText = "สินค้าหมด";
+        let statusText = isEn ? "Uncounted" : "ยังไม่นับ";
+        if (item.status === "IN_STOCK") statusText = isEn ? "In Stock" : "มีพอ";
+        else if (item.status === "LOW_STOCK") statusText = isEn ? "Low Stock" : "ใกล้หมด";
+        else if (item.status === "OUT_OF_STOCK") statusText = isEn ? "Out of Stock" : "สินค้าหมด";
 
         const escape = (val: string | number | null | undefined) => {
           if (val === null || val === undefined) return '""';
@@ -160,16 +175,16 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showToast("ดาวน์โหลดไฟล์ CSV เรียบร้อยแล้ว (รองรับ Excel ภาษาไทย)");
+      showToast(t("toast_csv_exported"));
     } catch (err) {
       console.error("Export CSV failed:", err);
-      showToast("เกิดข้อผิดพลาดในการดาวน์โหลด CSV");
+      showToast(t("error_export_csv"));
     }
   };
 
   // Copy LINE summary of snapshot
   const handleCopyLineSummary = async (snapshot: SnapshotArchiveData) => {
-    const thaiDate = formatThaiDate(snapshot.snapshotDate);
+    const formattedDate = formatThaiDate(snapshot.snapshotDate);
     const outOfStockItems = snapshot.items.filter(
       (i) => i.status === "OUT_OF_STOCK"
     );
@@ -181,12 +196,12 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
     const suppliers = Array.from(new Set(snapshot.items.map((i) => i.supplierName)));
 
     const lines: string[] = [
-      `📦 สรุปสต็อกย้อนหลัง (Snapshot)`,
-      `📅 วันที่: ${thaiDate}`,
+      t("snapshot_line_header"),
+      `${t("snapshot_line_date")} ${formattedDate}`,
     ];
 
     if (snapshot.note) {
-      lines.push(`📝 บันทึก: ${snapshot.note}`);
+      lines.push(`${t("snapshot_line_note")} ${snapshot.note}`);
     }
 
     lines.push(`--------------------------------`);
@@ -201,30 +216,30 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
 
       lines.push(`🏢 ${supplierName}`);
       if (sOut.length > 0) {
-        lines.push(`🔴 สินค้าที่หมดแล้ว:`);
+        lines.push(t("snapshot_line_out_of_stock"));
         sOut.forEach((it, idx) => {
           const qty = it.ordered && it.ordered > 0 ? it.ordered : 1;
-          lines.push(`  ${idx + 1}. ${it.itemName} (สั่ง ${qty} ${it.unit})`);
+          lines.push(`  ${idx + 1}. ${it.itemName} (${t("snapshot_line_order_qty")} ${qty} ${it.unit})`);
         });
       }
       if (sLow.length > 0) {
-        lines.push(`🟡 สินค้าที่ใกล้หมด:`);
+        lines.push(t("snapshot_line_low_stock"));
         sLow.forEach((it, idx) => {
           const remain = it.remain !== null && it.remain !== undefined ? it.remain : 0;
-          lines.push(`  ${idx + 1}. ${it.itemName} (เหลือ ${remain} ${it.unit})`);
+          lines.push(`  ${idx + 1}. ${it.itemName} (${t("snapshot_line_remain_qty")} ${remain} ${it.unit})`);
         });
       }
       lines.push("");
     }
 
     if (!hasAlerts) {
-      lines.push(`(ไม่มีสินค้าหมดหรือใกล้หมดในรอบนี้)`);
+      lines.push(t("snapshot_line_no_items"));
     }
 
     lines.push(`================================`);
     lines.push(
-      `💰 ยอดสั่งซื้อรวมทั้งหมด: ฿${snapshot.totalOrderAmount.toLocaleString(
-        "th-TH",
+      `${t("snapshot_line_grand_total")} ฿${snapshot.totalOrderAmount.toLocaleString(
+        isEn ? "en-US" : "th-TH",
         {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
@@ -250,17 +265,17 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
       }
 
       setCopiedId(snapshot.id);
-      showToast("คัดลอกสรุปสั่งซื้อลงคลิปบอร์ดแล้ว");
+      showToast(t("toast_copied_line_summary"));
       setTimeout(() => setCopiedId(null), 2500);
     } catch (err) {
       console.error("Copy failed:", err);
-      showToast("ไม่สามารถคัดลอกได้");
+      showToast(t("error_copy_failed"));
     }
   };
 
   // Delete snapshot handler
   const handleDeleteSnapshot = async (snapshotId: string) => {
-    if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประวัติการนับรอบนี้? การกระทำนี้ไม่สามารถย้อนกลับได้")) {
+    if (!confirm(t("confirm_delete_snapshot"))) {
       return;
     }
 
@@ -268,17 +283,17 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
     try {
       const res = await deleteSnapshotAction(snapshotId);
       if (!res.success) {
-        showToast(res.error || "ไม่สามารถลบประวัติได้");
+        showToast(res.error || t("error_delete_snapshot"));
         setDeletingId(null);
         return;
       }
 
       // Optimistically remove from list
       setSnapshots((prev) => prev.filter((s) => s.id !== snapshotId));
-      showToast("ลบประวัติการนับเรียบร้อยแล้ว");
+      showToast(t("toast_snapshot_deleted"));
     } catch (err) {
       console.error("Delete failed:", err);
-      showToast("เกิดข้อผิดพลาดในการลบประวัติ");
+      showToast(t("error_delete_snapshot"));
     } finally {
       setDeletingId(null);
     }
@@ -303,10 +318,10 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-800">
-                ประวัติการนับสต็อก (History)
+                {t("history_page_title")}
               </h2>
               <p className="text-[11px] text-slate-500">
-                บันทึก Snapshot ประจำสัปดาห์ทั้งหมด {snapshots.length} ครั้ง
+                {t("history_subtitle_count").replace("{count}", String(snapshots.length))}
               </p>
             </div>
           </div>
@@ -314,7 +329,7 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
             href="/"
             className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors flex items-center gap-1 touch-manipulation min-h-[36px]"
           >
-            <span>นับสต็อก</span>
+            <span>{t("nav_stock_check")}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -326,7 +341,7 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ค้นหาวันที่, บันทึกช่วยจำ หรือชื่อสินค้า..."
+            placeholder={t("history_search_placeholder")}
             className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[40px] touch-manipulation"
           />
           {searchQuery && (
@@ -350,13 +365,13 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
           <div className="space-y-1">
             <h3 className="font-bold text-slate-800 text-sm">
               {snapshots.length === 0
-                ? "ยังไม่มีประวัติการนับสต็อก"
-                : "ไม่พบประวัติที่ตรงกับคำค้นหา"}
+                ? t("history_empty_title")
+                : t("history_search_empty_title")}
             </h3>
             <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
               {snapshots.length === 0
-                ? "เมื่อกดปุ่ม 'รีเซ็ต' ในหน้าตรวจนับสต็อก ข้อมูลสรุปประจำสัปดาห์จะถูกจัดเก็บไว้ที่นี่โดยอัตโนมัติ"
-                : "ลองเปลี่ยนคำค้นหา หรือกดล้างคำค้นหา"}
+                ? t("history_empty_desc")
+                : (isEn ? "Try changing search terms or clear search" : "ลองเปลี่ยนคำค้นหา หรือกดล้างคำค้นหา")}
             </p>
           </div>
           {snapshots.length === 0 ? (
@@ -364,7 +379,7 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
               href="/"
               className="mt-2 min-h-[44px] px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 touch-manipulation"
             >
-              <span>ไปที่หน้าตรวจนับสต็อก</span>
+              <span>{t("go_to_stock_count")}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           ) : (
@@ -373,7 +388,7 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
               onClick={() => setSearchQuery("")}
               className="mt-2 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
             >
-              ล้างคำค้นหา
+              {t("clear_filter")}
             </button>
           )}
         </div>
@@ -429,8 +444,8 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
                       onClick={() => handleDeleteSnapshot(snapshot.id)}
                       disabled={isDeleting}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors touch-manipulation"
-                      title="ลบประวัตินี้"
-                      aria-label="ลบประวัตินี้"
+                      title={t("delete_snapshot_tooltip")}
+                      aria-label={t("delete_snapshot_tooltip")}
                     >
                       {isDeleting ? (
                         <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
@@ -443,21 +458,21 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
                   {/* Summary Metric Pills */}
                   <div className="grid grid-cols-3 gap-1.5 text-center">
                     <div className="p-2 bg-slate-50 border border-slate-100 rounded-xl">
-                      <div className="text-[10px] text-slate-500">นับแล้ว</div>
+                      <div className="text-[10px] text-slate-500">{t("items_counted")}</div>
                       <div className="text-xs font-bold text-slate-800">
-                        {snapshot.totalItemsChecked} รายการ
+                        {snapshot.totalItemsChecked} {t("items_unit")}
                       </div>
                     </div>
                     <div className="p-2 bg-rose-50/60 border border-rose-100 rounded-xl">
-                      <div className="text-[10px] text-rose-600">สินค้าหมด</div>
+                      <div className="text-[10px] text-rose-600">{t("status_out_of_stock")}</div>
                       <div className="text-xs font-extrabold text-rose-700">
-                        {snapshot.totalOutOfStock} รายการ
+                        {snapshot.totalOutOfStock} {t("items_unit")}
                       </div>
                     </div>
                     <div className="p-2 bg-indigo-50/60 border border-indigo-100 rounded-xl">
-                      <div className="text-[10px] text-indigo-600">ยอดสั่งซื้อรวม</div>
+                      <div className="text-[10px] text-indigo-600">{isEn ? "Total Order" : "ยอดสั่งซื้อรวม"}</div>
                       <div className="text-xs font-extrabold text-indigo-700 truncate">
-                        ฿{snapshot.totalOrderAmount.toLocaleString("th-TH", {
+                        ฿{snapshot.totalOrderAmount.toLocaleString(isEn ? "en-US" : "th-TH", {
                           minimumFractionDigits: 0,
                           maximumFractionDigits: 0,
                         })}
@@ -476,12 +491,12 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
                       {isCopied ? (
                         <>
                           <Check className="w-4 h-4 text-emerald-600" />
-                          <span>คัดลอกแล้ว</span>
+                          <span>{t("copied")}</span>
                         </>
                       ) : (
                         <>
                           <Copy className="w-4 h-4 text-emerald-600" />
-                          <span>คัดลอกสรุป (LINE)</span>
+                          <span>{isEn ? "Copy (LINE)" : "คัดลอกสรุป (LINE)"}</span>
                         </>
                       )}
                     </button>
@@ -491,7 +506,7 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
                       type="button"
                       onClick={() => handleExportCsv(snapshot)}
                       className="min-h-[44px] px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 touch-manipulation transition-colors"
-                      title="ดาวน์โหลดไฟล์ CSV สำหรับ Excel"
+                      title={t("download_csv_tooltip")}
                     >
                       <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                       <span>Excel (CSV)</span>
@@ -504,7 +519,7 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
                       className="min-h-[44px] px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1 touch-manipulation transition-colors"
                       aria-expanded={isExpanded}
                     >
-                      <span>{isExpanded ? "ย่อ" : "ดูรายการ"}</span>
+                      <span>{isExpanded ? t("collapse_items_btn") : t("view_items_btn")}</span>
                       {isExpanded ? (
                         <ChevronUp className="w-4 h-4" />
                       ) : (
@@ -533,7 +548,7 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
                             : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                         }`}
                       >
-                        คู่ค้าทั้งหมด ({snapshot.items.length})
+                        {t("all_suppliers_tab").replace("{count}", String(snapshot.items.length))}
                       </button>
                       {supplierNames.map((sName) => {
                         const count = supplierGroups[sName]?.length || 0;
@@ -566,26 +581,26 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
                       {displayedItems.map((item) => {
                         let statusBadge = (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                            ยังไม่นับ
+                            {isEn ? "Uncounted" : "ยังไม่นับ"}
                           </span>
                         );
 
                         if (item.status === "IN_STOCK") {
                           statusBadge = (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold border border-emerald-200">
-                              มีพอ ({item.remain} {item.unit})
+                              {t("status_in_stock")} ({item.remain} {item.unit})
                             </span>
                           );
                         } else if (item.status === "LOW_STOCK") {
                           statusBadge = (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold border border-amber-200">
-                              ใกล้หมด ({item.remain} {item.unit})
+                              {t("status_low_stock")} ({item.remain} {item.unit})
                             </span>
                           );
                         } else if (item.status === "OUT_OF_STOCK") {
                           statusBadge = (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-bold border border-rose-200">
-                              สั่ง: {item.ordered} {item.unit}
+                              {isEn ? "Order" : "สั่ง"}: {item.ordered} {item.unit}
                             </span>
                           );
                         }
@@ -610,7 +625,7 @@ export default function HistoryLogView({ initialSnapshots }: HistoryLogViewProps
                               <div>{statusBadge}</div>
                               {item.status === "OUT_OF_STOCK" && (
                                 <div className="text-[11px] font-extrabold text-slate-800 mt-0.5">
-                                  ฿{item.lineTotal.toLocaleString("th-TH", {
+                                  ฿{item.lineTotal.toLocaleString(isEn ? "en-US" : "th-TH", {
                                     minimumFractionDigits: 2,
                                   })}
                                 </div>
