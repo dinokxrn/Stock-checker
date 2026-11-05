@@ -7,7 +7,7 @@ import { ItemList, MasterItem } from "@/components/master/ItemList";
 import { SupplierList, SupplierItem } from "@/components/master/SupplierList";
 import { SupplierModal } from "@/components/master/SupplierModal";
 import { ItemModal } from "@/components/master/ItemModal";
-import { moveItemOrder, setItemSortPosition } from "@/actions/master-data";
+import { swapItemOrder, setItemSortPosition } from "@/actions/master-data";
 import { RefreshCw, Database } from "lucide-react";
 
 interface MasterViewProps {
@@ -41,36 +41,38 @@ export function MasterView({ initialSuppliers, initialItems }: MasterViewProps) 
     });
   };
 
-  // Reordering handlers for walk sequence
+  // Reordering handlers for walk sequence across ALL companies
   const handleMoveItem = async (itemId: string, direction: "up" | "down") => {
-    const currentList = [...items];
+    // Current visible list in user's view (filteredItems)
+    const currentList = [...filteredItems];
     const currentIndex = currentList.findIndex((i) => i.id === itemId);
     if (currentIndex === -1) return;
 
-    const currentItem = currentList[currentIndex];
-    const supplierId = currentItem.supplierId;
-
-    // Find indices of items with same supplier
-    const sameSupplierIndices = currentList
-      .map((it, idx) => (it.supplierId === supplierId ? idx : -1))
-      .filter((idx) => idx !== -1);
-
-    const posInSupplier = sameSupplierIndices.indexOf(currentIndex);
-    const targetPosInSupplier = direction === "up" ? posInSupplier - 1 : posInSupplier + 1;
-
-    if (targetPosInSupplier < 0 || targetPosInSupplier >= sameSupplierIndices.length) {
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= currentList.length) {
       return;
     }
 
-    const targetIndex = sameSupplierIndices[targetPosInSupplier];
+    const currentItem = currentList[currentIndex];
+    const neighborItem = currentList[targetIndex];
 
-    // Optimistically swap
-    const temp = currentList[currentIndex];
-    currentList[currentIndex] = currentList[targetIndex];
-    currentList[targetIndex] = temp;
-    setItems(currentList);
+    // Optimistically swap sortOrder in local state for 0ms response
+    setItems((prevItems) => {
+      const next = [...prevItems];
+      const idxA = next.findIndex((i) => i.id === currentItem.id);
+      const idxB = next.findIndex((i) => i.id === neighborItem.id);
 
-    const res = await moveItemOrder(itemId, direction, supplierId);
+      if (idxA !== -1 && idxB !== -1) {
+        const orderA = next[idxA].sortOrder ?? (idxA + 1);
+        const orderB = next[idxB].sortOrder ?? (idxB + 1);
+        next[idxA] = { ...next[idxA], sortOrder: orderB };
+        next[idxB] = { ...next[idxB], sortOrder: orderA };
+        next.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      }
+      return next;
+    });
+
+    const res = await swapItemOrder(currentItem.id, neighborItem.id);
     if (!res.success) {
       setItems(initialItems); // Rollback on error
     } else {
@@ -79,10 +81,7 @@ export function MasterView({ initialSuppliers, initialItems }: MasterViewProps) 
   };
 
   const handleSetItemPosition = async (itemId: string, targetPosition: number) => {
-    const currentItem = items.find((i) => i.id === itemId);
-    if (!currentItem) return;
-
-    const res = await setItemSortPosition(itemId, targetPosition, currentItem.supplierId);
+    const res = await setItemSortPosition(itemId, targetPosition);
     if (res.success) {
       router.refresh();
     }

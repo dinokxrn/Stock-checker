@@ -128,7 +128,7 @@ export function ItemList({
       <div className="flex items-center gap-2 p-3 bg-blue-50/80 border border-blue-200/80 rounded-2xl text-xs text-blue-900 shadow-xs">
         <ArrowUpDown className="w-4 h-4 text-blue-600 shrink-0" />
         <div className="leading-relaxed">
-          <strong>จัดเรียงเส้นทางเดินนับ:</strong> กดปุ่ม{" "}
+          <strong>จัดเรียงเส้นทางเดินนับ (สลับข้ามบริษัทได้อิสระ):</strong> กดปุ่ม{" "}
           <span className="font-bold bg-white px-1.5 py-0.5 rounded border border-blue-200 text-blue-800">
             ↑
           </span>{" "}
@@ -136,11 +136,11 @@ export function ItemList({
           <span className="font-bold bg-white px-1.5 py-0.5 rounded border border-blue-200 text-blue-800">
             ↓
           </span>{" "}
-          เพื่อขยับ หรือแตะที่ป้าย{" "}
+          เพื่อสลับลำดับ หรือแตะที่ป้าย{" "}
           <span className="font-bold bg-white px-1.5 py-0.5 rounded border border-blue-200 text-blue-800">
             #ลำดับ
           </span>{" "}
-          เพื่อระบุเลขตำแหน่งที่ต้องการได้ทันที
+          เพื่อพิมพ์เลขตำแหน่งที่ต้องการย้ายไปได้ทันที
         </div>
       </div>
 

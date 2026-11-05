@@ -24,7 +24,6 @@ export default async function MasterDataPage() {
         },
       },
       orderBy: [
-        { supplier: { name: "asc" } },
         { sortOrder: "asc" },
         { name: "asc" },
       ],

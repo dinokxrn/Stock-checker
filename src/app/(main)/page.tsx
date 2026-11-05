@@ -26,7 +26,6 @@ export default async function HomePage() {
         },
       },
       orderBy: [
-        { supplier: { name: "asc" } },
         { sortOrder: "asc" },
         { name: "asc" },
       ],

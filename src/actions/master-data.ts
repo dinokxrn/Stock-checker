@@ -295,72 +295,80 @@ export async function deleteItem(id: string) {
 }
 
 /**
- * Move an item up or down relative to its adjacent neighbor
+ * Swap sort order between two items directly (supports cross-supplier reordering!)
  */
-export async function moveItemOrder(
-  itemId: string,
-  direction: "up" | "down",
-  supplierId?: string
-) {
+export async function swapItemOrder(itemId1: string, itemId2: string) {
   try {
-    const currentItem = await prisma.item.findUnique({
-      where: { id: itemId },
-      select: { id: true, sortOrder: true, supplierId: true },
-    });
+    const [item1, item2] = await Promise.all([
+      prisma.item.findUnique({
+        where: { id: itemId1 },
+        select: { id: true, sortOrder: true },
+      }),
+      prisma.item.findUnique({
+        where: { id: itemId2 },
+        select: { id: true, sortOrder: true },
+      }),
+    ]);
 
-    if (!currentItem) {
-      return { success: false, error: "ไม่พบรายการสินค้า" };
+    if (!item1 || !item2) {
+      return { success: false, error: "ไม่พบรายการสินค้าที่ต้องการสลับ" };
     }
 
-    const targetSupplierId = supplierId || currentItem.supplierId;
+    const order1 = item1.sortOrder;
+    let order2 = item2.sortOrder;
 
-    const items = await prisma.item.findMany({
-      where: { supplierId: targetSupplierId },
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: { id: true, sortOrder: true },
-    });
-
-    const currentIndex = items.findIndex((i) => i.id === itemId);
-    if (currentIndex === -1) {
-      return { success: false, error: "ไม่พบตำแหน่งของสินค้า" };
-    }
-
-    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    if (targetIndex < 0 || targetIndex >= items.length) {
-      return { success: true }; // Already at top or bottom
-    }
-
-    const neighbor = items[targetIndex];
-
-    const currentOrder = currentItem.sortOrder;
-    const neighborOrder = neighbor.sortOrder;
-
-    if (currentOrder === neighborOrder) {
-      // Re-index all sequentially to break ties
-      await prisma.$transaction(
-        items.map((it, idx) =>
-          prisma.item.update({
-            where: { id: it.id },
-            data: { sortOrder: idx + 1 },
-          })
-        )
-      );
-      return moveItemOrder(itemId, direction, targetSupplierId);
+    if (order1 === order2) {
+      order2 = order1 + 1;
     }
 
     await prisma.$transaction([
       prisma.item.update({
-        where: { id: currentItem.id },
-        data: { sortOrder: neighborOrder },
+        where: { id: item1.id },
+        data: { sortOrder: order2 },
       }),
       prisma.item.update({
-        where: { id: neighbor.id },
-        data: { sortOrder: currentOrder },
+        where: { id: item2.id },
+        data: { sortOrder: order1 },
       }),
     ]);
 
     safeRevalidate();
     return { success: true };
+  } catch (error) {
+    console.error("Failed to swap item order:", error);
+    return { success: false, error: "ไม่สามารถสลับลำดับสินค้าได้" };
+  }
+}
+
+/**
+ * Move an item up or down relative to its adjacent neighbor (cross-supplier supported)
+ */
+export async function moveItemOrder(
+  itemId: string,
+  direction: "up" | "down",
+  neighborId?: string
+) {
+  try {
+    if (neighborId) {
+      return swapItemOrder(itemId, neighborId);
+    }
+
+    const allItems = await prisma.item.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, sortOrder: true },
+    });
+
+    const currentIndex = allItems.findIndex((i) => i.id === itemId);
+    if (currentIndex === -1) {
+      return { success: false, error: "ไม่พบตำแหน่งของสินค้า" };
+    }
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= allItems.length) {
+      return { success: true }; // Already at top or bottom
+    }
+
+    return swapItemOrder(itemId, allItems[targetIndex].id);
   } catch (error) {
     console.error("Failed to move item order:", error);
     return { success: false, error: "ไม่สามารถสลับลำดับสินค้าได้" };
@@ -368,32 +376,19 @@ export async function moveItemOrder(
 }
 
 /**
- * Move item to a specific 1-based target position within its supplier
+ * Move item to a specific 1-based target position globally across all items
  */
 export async function setItemSortPosition(
   itemId: string,
-  targetPosition: number,
-  supplierId?: string
+  targetPosition: number
 ) {
   try {
-    const currentItem = await prisma.item.findUnique({
-      where: { id: itemId },
-      select: { id: true, supplierId: true },
-    });
-
-    if (!currentItem) {
-      return { success: false, error: "ไม่พบรายการสินค้า" };
-    }
-
-    const targetSupplierId = supplierId || currentItem.supplierId;
-
-    const items = await prisma.item.findMany({
-      where: { supplierId: targetSupplierId },
+    const allItems = await prisma.item.findMany({
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       select: { id: true },
     });
 
-    const filtered = items.filter((i) => i.id !== itemId);
+    const filtered = allItems.filter((i) => i.id !== itemId);
     const clampedIndex = Math.max(0, Math.min(targetPosition - 1, filtered.length));
     filtered.splice(clampedIndex, 0, { id: itemId });
 
