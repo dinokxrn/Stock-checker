@@ -83,9 +83,9 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
     return counts;
   }, [items]);
 
-  // Filter and sort items based on user criteria:
-  // "อันไหนนับแล้วก็ให้เลื่อนลงไปอยู่ล่างสุดแทน"
-  const { uncountedItems, countedItems, filteredItems } = useMemo(() => {
+  // Filter items to display:
+  // "เมื่อกดบันทึกแล้วจะหายไปจากหน้าตรวจนับสต็อก ถ้าจะแก้ไขไปที่หน้าสรุปสั่งซื้อ"
+  const { itemsToDisplay, isFilterActive } = useMemo(() => {
     const matched = items.filter((item) => {
       // 1. Supplier Filter
       if (selectedSupplierId !== "ALL" && item.supplierId !== selectedSupplierId) {
@@ -111,13 +111,16 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
       return true;
     });
 
-    const uncounted = matched.filter((item) => item.status === "NONE");
-    const counted = matched.filter((item) => item.status !== "NONE");
+    // If default view (selectedStatus === "ALL"), strictly show ONLY uncounted items (status === "NONE")
+    // When saved, status becomes IN_STOCK/LOW_STOCK/OUT_OF_STOCK and disappears immediately!
+    const toDisplay =
+      selectedStatus === "ALL"
+        ? matched.filter((item) => item.status === "NONE")
+        : matched;
 
     return {
-      uncountedItems: uncounted,
-      countedItems: counted,
-      filteredItems: [...uncounted, ...counted],
+      itemsToDisplay: toDisplay,
+      isFilterActive: searchQuery !== "" || selectedSupplierId !== "ALL" || selectedStatus !== "ALL",
     };
   }, [items, selectedSupplierId, selectedStatus, searchQuery]);
 
@@ -220,70 +223,110 @@ export function StockCheckingView({ initialItems, suppliers }: StockCheckingView
         onOpenResetModal={() => setIsResetModalOpen(true)}
       />
 
-      {/* Filter Status Badge & Result Count */}
-      <div className="flex items-center justify-between text-xs text-slate-500 px-1 pt-1">
+      {/* Count Info Banner */}
+      <div className="flex items-center justify-between text-xs text-slate-500 px-1 pt-0.5">
         <span>
-          แสดงผล <strong className="text-slate-800 font-bold">{filteredItems.length}</strong> จาก{" "}
-          {items.length} รายการ
+          {selectedStatus === "ALL" ? (
+            <>
+              รอนับอีก <strong className="text-slate-800 font-bold">{itemsToDisplay.length}</strong> รายการ{" "}
+              <span className="text-slate-400 font-normal">
+                (นับแล้ว {stats.checked} / {stats.total})
+              </span>
+            </>
+          ) : (
+            <>
+              แสดงผล <strong className="text-slate-800 font-bold">{itemsToDisplay.length}</strong> รายการ
+            </>
+          )}
         </span>
-        {(searchQuery || selectedSupplierId !== "ALL" || selectedStatus !== "ALL") && (
-          <button
-            type="button"
-            onClick={() => {
-              setSearchQuery("");
-              setSelectedSupplierId("ALL");
-              setSelectedStatus("ALL");
-            }}
-            className="text-blue-600 hover:text-blue-800 font-medium underline"
+        <div className="flex items-center gap-2">
+          {isFilterActive && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedSupplierId("ALL");
+                setSelectedStatus("ALL");
+              }}
+              className="text-blue-600 hover:text-blue-800 font-medium underline"
+            >
+              ล้างตัวกรอง
+            </button>
+          )}
+          <Link
+            href="/dashboard"
+            className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
           >
-            ล้างตัวกรองทั้งหมด
-          </button>
-        )}
+            <span>หน้าสรุปสั่งซื้อ</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
 
-      {/* Stock Items List */}
-      {filteredItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-8 bg-white border border-dashed border-slate-300 rounded-2xl text-center space-y-2 mt-2">
-          <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center">
-            <PackageSearch className="w-6 h-6" />
+      {/* Stock Items List or Empty / All Counted States */}
+      {itemsToDisplay.length === 0 ? (
+        stats.total > 0 && stats.checked === stats.total && !isFilterActive ? (
+          /* All Counted Celebration Card */
+          <div className="flex flex-col items-center justify-center p-8 bg-white border border-emerald-200 rounded-3xl text-center space-y-4 shadow-sm my-4">
+            <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-inner">
+              <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-black text-slate-800">
+                ตรวจนับสต็อกครบถ้วนทุกรายการแล้ว! 🎉
+              </h3>
+              <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+                บันทึกสต็อกครบทั้งหมด {stats.total} รายการแล้ว หากต้องการตรวจสอบ แก้ไขจำนวน หรือส่งออกรายการสั่งซื้อ ให้ไปที่หน้าสรุปสั่งซื้อ
+              </p>
+            </div>
+            <Link
+              href="/dashboard"
+              className="min-h-[48px] px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all touch-manipulation"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              <span>ไปที่หน้าสรุปรายการสั่งซื้อ</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
-          <h3 className="font-bold text-slate-700">ไม่พบรายการสินค้าที่ค้นหา</h3>
-          <p className="text-xs text-slate-400 max-w-xs">
-            ลองปรับเปลี่ยนคำค้นหา หรือเลือกตัวกรองคู่ค้า/สถานะอื่น
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setSearchQuery("");
-              setSelectedSupplierId("ALL");
-              setSelectedStatus("ALL");
-            }}
-            className="mt-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
-          >
-            รีเซ็ตตัวกรอง
-          </button>
-        </div>
+        ) : (
+          /* Filtered empty state */
+          <div className="flex flex-col items-center justify-center p-8 bg-white border border-dashed border-slate-300 rounded-2xl text-center space-y-2 mt-2">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center">
+              <PackageSearch className="w-6 h-6" />
+            </div>
+            <h3 className="font-bold text-slate-700">ไม่มีรายการสินค้ารอนับในหมวดนี้</h3>
+            <p className="text-xs text-slate-400 max-w-xs">
+              {isFilterActive
+                ? "ลองรีเซ็ตตัวกรองเพื่อดูรายการทั้งหมด หรือไปที่หน้าสรุปสั่งซื้อเพื่อแก้ไขรายการที่นับแล้ว"
+                : "รายการสินค้าทุกตัวในหมวดนี้ถูกบันทึกแล้ว"}
+            </p>
+            <div className="flex items-center gap-2 pt-2">
+              {isFilterActive && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedSupplierId("ALL");
+                    setSelectedStatus("ALL");
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
+                >
+                  รีเซ็ตตัวกรอง
+                </button>
+              )}
+              <Link
+                href="/dashboard"
+                className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl flex items-center gap-1"
+              >
+                <span>ไปหน้าสรุปสั่งซื้อ</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        )
       ) : (
         <div className="space-y-3">
-          {/* 1. รายการที่ยังไม่ได้นับ (NONE) แสดงอยู่ด้านบน */}
-          {uncountedItems.map((item) => (
-            <StockItemCard key={item.id} item={item} onUpdate={handleItemUpdate} />
-          ))}
-
-          {/* เส้นคั่นเมื่อมีทั้งรายการที่ยังไม่ได้นับและรายการที่นับแล้ว */}
-          {uncountedItems.length > 0 && countedItems.length > 0 && (
-            <div className="flex items-center gap-2.5 py-3 px-1 my-1">
-              <div className="h-px bg-slate-200 flex-1" />
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200/80 text-[11px] font-bold text-slate-500 shadow-2xs">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>นับแล้ว ({countedItems.length} รายการ)</span>
-              </div>
-              <div className="h-px bg-slate-200 flex-1" />
-            </div>
-          )}
-
-          {/* 2. รายการที่นับแล้ว ย้ายลงมาอยู่ด้านล่างสุด */}
-          {countedItems.map((item) => (
+          {itemsToDisplay.map((item) => (
             <StockItemCard key={item.id} item={item} onUpdate={handleItemUpdate} />
           ))}
         </div>

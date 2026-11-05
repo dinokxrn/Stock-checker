@@ -22,11 +22,15 @@ import {
   Square,
   Banknote,
   CheckCircle2,
+  Pencil,
+  RotateCcw,
+  Package,
 } from "lucide-react";
 import {
   updateItemStockStatus,
   toggleItemOrderedStatus,
   toggleSupplierItemsOrdered,
+  StockStatus,
 } from "@/actions/stock";
 import { OrderScheduleAlert } from "@/components/OrderScheduleAlert";
 import { getSupplierScheduleStatus } from "@/lib/order-schedule";
@@ -58,6 +62,18 @@ interface OrderDashboardViewProps {
   initialSuppliers: DashboardSupplier[];
 }
 
+interface EditingStockItem {
+  id: string;
+  name: string;
+  unit: string;
+  unitPrice: number;
+  supplierName: string;
+  supplierId: string;
+  status: StockStatus;
+  remain: number;
+  ordered: number;
+}
+
 type FilterTab = "active" | "out_of_stock" | "low_stock" | "all";
 
 export default function OrderDashboardView({ initialSuppliers }: OrderDashboardViewProps) {
@@ -65,12 +81,20 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("active");
   const [expandedSuppliers, setExpandedSuppliers] = useState<Record<string, boolean>>({});
+  const [expandedInStock, setExpandedInStock] = useState<Record<string, boolean>>({});
   const [copiedSupplierId, setCopiedSupplierId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const [previewSupplier, setPreviewSupplier] = useState<DashboardSupplier | null>(null);
   const [previewAllOpen, setPreviewAllOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  // Quick Edit Modal State
+  const [editingItem, setEditingItem] = useState<EditingStockItem | null>(null);
+  const [editStatus, setEditStatus] = useState<StockStatus>("NONE");
+  const [editRemain, setEditRemain] = useState<number>(0);
+  const [editOrdered, setEditOrdered] = useState<number>(1);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Helper to format currency
   const formatBaht = (amount: number) => {
@@ -88,11 +112,90 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     }));
   };
 
+  const toggleInStockExpand = (supplierId: string) => {
+    setExpandedInStock((prev) => ({
+      ...prev,
+      [supplierId]: !prev[supplierId],
+    }));
+  };
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((current) => (current === msg ? null : current));
     }, 3000);
+  };
+
+  // Open Quick Edit Modal for an item
+  const handleOpenEdit = (item: DashboardItem, supplierName: string) => {
+    const status = (item.status as StockStatus) || "NONE";
+    const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
+    const ordered = item.ordered !== null && item.ordered !== undefined && item.ordered > 0 ? item.ordered : 1;
+
+    setEditingItem({
+      id: item.id,
+      name: item.name,
+      unit: item.unit,
+      unitPrice: item.unitPrice,
+      supplierName,
+      supplierId: item.supplierId,
+      status,
+      remain,
+      ordered,
+    });
+    setEditStatus(status);
+    setEditRemain(remain);
+    setEditOrdered(ordered);
+  };
+
+  // Save the edited stock status
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    setIsSavingEdit(true);
+
+    const targetStatus = editStatus;
+    const targetRemain = targetStatus === "LOW_STOCK" || targetStatus === "IN_STOCK" ? Math.max(0, editRemain) : null;
+    const targetOrdered = targetStatus === "OUT_OF_STOCK" ? Math.max(1, editOrdered) : null;
+
+    // Optimistically update local suppliers state
+    setSuppliers((prev) =>
+      prev.map((s) => {
+        if (s.id !== editingItem.supplierId) return s;
+        return {
+          ...s,
+          items: s.items.map((i) => {
+            if (i.id !== editingItem.id) return i;
+            return {
+              ...i,
+              status: targetStatus,
+              remain: targetRemain,
+              ordered: targetOrdered,
+            };
+          }),
+        };
+      })
+    );
+
+    // Call server action
+    const res = await updateItemStockStatus(
+      editingItem.id,
+      targetStatus,
+      targetRemain,
+      targetOrdered
+    );
+
+    setIsSavingEdit(false);
+    setEditingItem(null);
+
+    if (res.success) {
+      if (targetStatus === "NONE") {
+        showToast(`ย้าย "${editingItem.name}" กลับไปที่หน้าตรวจนับสต็อกแล้ว`);
+      } else {
+        showToast(`บันทึกการแก้ไข "${editingItem.name}" เรียบร้อยแล้ว`);
+      }
+    } else {
+      showToast(res.error || "เกิดข้อผิดพลาดในการแก้ไข");
+    }
   };
 
   // Update ordered quantity on out-of-stock items directly in dashboard
@@ -117,6 +220,31 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
     startTransition(async () => {
       await updateItemStockStatus(itemId, "OUT_OF_STOCK", 0, targetQty);
+    });
+  };
+
+  // Update remain quantity on low-stock items directly in dashboard
+  const handleRemainChange = (supplierId: string, itemId: string, delta: number) => {
+    let targetRemain = 0;
+
+    setSuppliers((prev) =>
+      prev.map((s) => {
+        if (s.id !== supplierId) return s;
+        return {
+          ...s,
+          items: s.items.map((i) => {
+            if (i.id !== itemId) return i;
+            const current = i.remain !== null && i.remain !== undefined ? i.remain : 0;
+            const next = Math.max(0, current + delta);
+            targetRemain = next;
+            return { ...i, remain: next };
+          }),
+        };
+      })
+    );
+
+    startTransition(async () => {
+      await updateItemStockStatus(itemId, "LOW_STOCK", targetRemain, null);
     });
   };
 
@@ -385,11 +513,14 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     }
   };
 
-  // Calculate high-level metrics including pricing and ordered counts
+  // Calculate high-level metrics including pricing, inStock, and ordered counts
   const supplierMetrics = useMemo(() => {
     return suppliers.map((supplier) => {
       const outOfStockItems = supplier.items.filter((item) => item.status === "OUT_OF_STOCK");
       const lowStockItems = supplier.items.filter((item) => item.status === "LOW_STOCK");
+      const inStockItems = supplier.items.filter((item) => item.status === "IN_STOCK");
+      const uncountedItems = supplier.items.filter((item) => item.status === "NONE");
+
       const alertItems = [...outOfStockItems, ...lowStockItems];
       const hasAlerts = alertItems.length > 0;
 
@@ -414,6 +545,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
         supplier,
         outOfStockItems,
         lowStockItems,
+        inStockItems,
+        uncountedItems,
         alertItems,
         hasAlerts,
         estimatedOrderAmount,
@@ -431,6 +564,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   const grandSummary = useMemo(() => {
     let totalOutOfStock = 0;
     let totalLowStock = 0;
+    let totalInStock = 0;
+    let totalUncounted = 0;
     let grandTotalOrderAmount = 0;
     let totalAlertItemsCount = 0;
     let totalOrderedItemsCount = 0;
@@ -440,6 +575,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     supplierMetrics.forEach((m) => {
       totalOutOfStock += m.outOfStockItems.length;
       totalLowStock += m.lowStockItems.length;
+      totalInStock += m.inStockItems.length;
+      totalUncounted += m.uncountedItems.length;
       grandTotalOrderAmount += m.estimatedOrderAmount;
       totalAlertItemsCount += m.alertItems.length;
       totalOrderedItemsCount += m.orderedCount;
@@ -455,6 +592,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     return {
       totalOutOfStock,
       totalLowStock,
+      totalInStock,
+      totalUncounted,
       grandTotalOrderAmount,
       totalAlertItemsCount,
       totalOrderedItemsCount,
@@ -528,7 +667,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 สรุปรายการสั่งซื้อและสต็อก
               </h1>
               <p className="text-[11px] text-slate-400">
-                รายการสินค้าที่ต้องสั่งซื้อ ราคาประมาณการ และสถานะการสั่ง
+                รายการสินค้าที่ต้องสั่งซื้อ ราคาประมาณการ และสถานะการสั่ง (แก้ไขสต็อกได้ที่นี่)
               </p>
             </div>
           </div>
@@ -727,6 +866,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
               supplier,
               outOfStockItems,
               lowStockItems,
+              inStockItems,
+              uncountedItems,
               alertItems,
               hasAlerts,
               estimatedOrderAmount,
@@ -738,6 +879,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             } = m;
 
             const isExpanded = Boolean(expandedSuppliers[supplier.id]);
+            const isInStockExpanded = Boolean(expandedInStock[supplier.id]);
             const schedule = getSupplierScheduleStatus(supplier.orderDays);
             const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
               generateLineMessage(supplier)
@@ -886,14 +1028,14 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                       </a>
                     </div>
                   ) : (
-                    <div className="pt-1">
-                      <Link
-                        href="/"
-                        className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-200 transition-colors"
+                    <div className="pt-1 flex items-center justify-between">
+                      <span className="text-xs text-slate-500">ไม่มีรายการสินค้าที่ต้องสั่งซื้อ</span>
+                      <button
+                        onClick={() => toggleExpand(supplier.id)}
+                        className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1"
                       >
-                        <ClipboardList className="w-3.5 h-3.5 text-slate-400" />
-                        ไปตรวจนับสต็อกสินค้ารายการนี้
-                      </Link>
+                        {isExpanded ? "ซ่อนรายการ" : `ดูรายการทั้งหมด (${supplier.items.length})`}
+                      </button>
                     </div>
                   )}
 
@@ -954,7 +1096,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 </div>
 
                 {/* Expanded Item Breakdown Table / List */}
-                {hasAlerts && isExpanded && (
+                {isExpanded && (
                   <div className="bg-slate-50/70 border-t border-slate-200/80 p-4 space-y-4">
                     {/* Out of Stock Section */}
                     {outOfStockItems.length > 0 && (
@@ -964,7 +1106,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                             <XCircle className="w-3.5 h-3.5" />
                             <span>สินค้าที่หมดแล้ว ({outOfStockItems.length} รายการ)</span>
                           </span>
-                          <span className="text-slate-400 font-normal">ปรับจำนวนสั่งซื้อ หรือติ๊กเมื่อสั่งแล้ว</span>
+                          <span className="text-slate-400 font-normal">แตะดินสอเพื่อแก้ไขสถานะ</span>
                         </div>
 
                         <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
@@ -1039,7 +1181,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                   )}
                                 </div>
 
-                                {/* Quantity Steppers [-] [qty] [+] */}
+                                {/* Controls: Steppers [-] [qty] [+] and Edit Button */}
                                 <div className="shrink-0 flex items-center gap-1.5">
                                   <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
                                     <button
@@ -1066,6 +1208,16 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                   <span className="text-[11px] font-bold text-slate-600">
                                     {item.unit}
                                   </span>
+
+                                  {/* Edit Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEdit(item, supplier.name)}
+                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 flex items-center justify-center transition-colors ml-1"
+                                    title="แก้ไขสถานะหรือจำนวน"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               </div>
                             );
@@ -1077,9 +1229,12 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                     {/* Low Stock Section */}
                     {lowStockItems.length > 0 && (
                       <div className="space-y-2">
-                        <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>สินค้าที่ใกล้หมด ({lowStockItems.length} รายการ)</span>
+                        <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>สินค้าที่ใกล้หมด ({lowStockItems.length} รายการ)</span>
+                          </span>
+                          <span className="text-slate-400 font-normal">ปรับจำนวนคงเหลือ หรือแก้ไขสถานะ</span>
                         </div>
 
                         <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
@@ -1143,14 +1298,123 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                   )}
                                 </div>
 
-                                <div className="shrink-0 text-right">
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                    เหลือ {remain} {item.unit}
+                                {/* Controls: Steppers for Remain and Edit Button */}
+                                <div className="shrink-0 flex items-center gap-1.5">
+                                  <div className="flex items-center bg-amber-50 rounded-lg p-0.5 border border-amber-200">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemainChange(supplier.id, item.id, -1)}
+                                      disabled={remain <= 0}
+                                      className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 disabled:opacity-30 rounded transition-all touch-manipulation"
+                                      title="ลดจำนวนคงเหลือ"
+                                    >
+                                      <Minus className="w-3 h-3" />
+                                    </button>
+                                    <span className="min-w-[28px] text-center text-xs font-extrabold text-amber-800">
+                                      {remain}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemainChange(supplier.id, item.id, 1)}
+                                      className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded transition-all touch-manipulation"
+                                      title="เพิ่มจำนวนคงเหลือ"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                  <span className="text-[11px] font-bold text-amber-800">
+                                    {item.unit}
                                   </span>
+
+                                  {/* Edit Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEdit(item, supplier.name)}
+                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 flex items-center justify-center transition-colors ml-1"
+                                    title="แก้ไขสถานะหรือจำนวน"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               </div>
                             );
                           })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* In Stock Items (Collapsible Section) */}
+                    {inStockItems.length > 0 && (
+                      <div className="space-y-2 pt-1 border-t border-slate-200/60">
+                        <button
+                          type="button"
+                          onClick={() => toggleInStockExpand(supplier.id)}
+                          className="w-full flex items-center justify-between p-2 rounded-xl bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-800 text-xs font-bold transition-colors touch-manipulation"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span>สินค้ามีพอในสต็อก ({inStockItems.length} รายการ)</span>
+                          </span>
+                          <span className="text-[11px] font-semibold text-emerald-700 underline">
+                            {isInStockExpanded ? "ซ่อน" : "ดู/แก้ไขรายการ"}
+                          </span>
+                        </button>
+
+                        {isInStockExpanded && (
+                          <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs animate-in fade-in duration-150">
+                            {inStockItems.map((item, idx) => (
+                              <div
+                                key={item.id}
+                                className="p-3 flex items-center justify-between gap-2 hover:bg-slate-50/50 transition-colors"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-medium text-slate-400 w-4">
+                                      {idx + 1}.
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-800 truncate">
+                                      {item.name}
+                                    </span>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
+                                      มีพอ
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 ml-5 mt-0.5">
+                                    ราคา: {item.unitPrice > 0 ? formatBaht(item.unitPrice) : "0"} / {item.unit}
+                                  </div>
+                                </div>
+
+                                <div className="shrink-0 flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEdit(item, supplier.name)}
+                                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 text-xs font-semibold flex items-center gap-1 transition-colors"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                    <span>แก้ไข</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Uncounted Items for this supplier (if any) */}
+                    {uncountedItems.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <div className="p-2 rounded-xl bg-slate-100 text-slate-600 text-xs flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Package className="w-3.5 h-3.5 text-slate-400" />
+                            <span>ยังไม่ได้นับในรอบนี้: {uncountedItems.length} รายการ</span>
+                          </span>
+                          <Link
+                            href="/"
+                            className="text-indigo-600 hover:underline font-bold text-[11px]"
+                          >
+                            ไปตรวจนับสต็อก →
+                          </Link>
                         </div>
                       </div>
                     )}
@@ -1161,6 +1425,195 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
           })
         )}
       </div>
+
+      {/* Quick Edit Stock Item Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4 max-h-[90vh] flex flex-col shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 leading-snug">
+                  แก้ไขสถานะ: {editingItem.name}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  บริษัท {editingItem.supplierName} • หน่วย: {editingItem.unit}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Status Selection Grid (4 States) */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">เลือกสถานะสต็อก:</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditStatus("IN_STOCK")}
+                  className={`p-3 rounded-xl border text-left font-bold text-xs flex items-center gap-2 transition-all touch-manipulation ${
+                    editStatus === "IN_STOCK"
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-300"
+                      : "bg-emerald-50/70 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <div>
+                    <div>มีพอในสต็อก</div>
+                    <div className="text-[10px] font-normal opacity-90">ไม่ต้องสั่งเพิ่ม</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditStatus("LOW_STOCK")}
+                  className={`p-3 rounded-xl border text-left font-bold text-xs flex items-center gap-2 transition-all touch-manipulation ${
+                    editStatus === "LOW_STOCK"
+                      ? "bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-300"
+                      : "bg-amber-50/70 text-amber-800 border-amber-200 hover:bg-amber-100"
+                  }`}
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <div>
+                    <div>ใกล้หมด</div>
+                    <div className="text-[10px] font-normal opacity-90">ระบุจำนวนคงเหลือ</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditStatus("OUT_OF_STOCK")}
+                  className={`p-3 rounded-xl border text-left font-bold text-xs flex items-center gap-2 transition-all touch-manipulation ${
+                    editStatus === "OUT_OF_STOCK"
+                      ? "bg-rose-600 text-white border-rose-600 shadow-md ring-2 ring-rose-300"
+                      : "bg-rose-50/70 text-rose-800 border-rose-200 hover:bg-rose-100"
+                  }`}
+                >
+                  <XCircle className="w-4 h-4 shrink-0" />
+                  <div>
+                    <div>สินค้าหมด</div>
+                    <div className="text-[10px] font-normal opacity-90">ระบุจำนวนสั่ง</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditStatus("NONE")}
+                  className={`p-3 rounded-xl border text-left font-bold text-xs flex items-center gap-2 transition-all touch-manipulation ${
+                    editStatus === "NONE"
+                      ? "bg-slate-800 text-white border-slate-800 shadow-md ring-2 ring-slate-400"
+                      : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                  }`}
+                >
+                  <RotateCcw className="w-4 h-4 shrink-0" />
+                  <div>
+                    <div>ยังไม่นับ (นับใหม่)</div>
+                    <div className="text-[10px] font-normal opacity-90">ย้ายกลับไปหน้านับ</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Dynamic Quantity Input based on status */}
+            {editStatus === "LOW_STOCK" && (
+              <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl space-y-2">
+                <label className="text-xs font-bold text-amber-900 flex items-center justify-between">
+                  <span>จำนวนคงเหลือ (Remain):</span>
+                  <span className="text-[11px] text-amber-700 font-semibold">{editingItem.unit}</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditRemain((r) => Math.max(0, r - 1))}
+                    disabled={editRemain <= 0}
+                    className="w-10 h-10 bg-white border border-amber-200 text-amber-800 font-bold rounded-lg flex items-center justify-center hover:bg-amber-100 disabled:opacity-40"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editRemain}
+                    onChange={(e) => setEditRemain(Math.max(0, Number(e.target.value) || 0))}
+                    className="flex-1 h-10 text-center font-bold text-base text-slate-800 bg-white border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEditRemain((r) => r + 1)}
+                    className="w-10 h-10 bg-white border border-amber-200 text-amber-800 font-bold rounded-lg flex items-center justify-center hover:bg-amber-100"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {editStatus === "OUT_OF_STOCK" && (
+              <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-xl space-y-2">
+                <label className="text-xs font-bold text-rose-900 flex items-center justify-between">
+                  <span>จำนวนที่ต้องการสั่ง (Order Qty):</span>
+                  <span className="text-[11px] text-rose-700 font-semibold">{editingItem.unit}</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditOrdered((o) => Math.max(1, o - 1))}
+                    disabled={editOrdered <= 1}
+                    className="w-10 h-10 bg-white border border-rose-200 text-rose-800 font-bold rounded-lg flex items-center justify-center hover:bg-rose-100 disabled:opacity-40"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editOrdered}
+                    onChange={(e) => setEditOrdered(Math.max(1, Number(e.target.value) || 1))}
+                    className="flex-1 h-10 text-center font-bold text-base text-slate-800 bg-white border border-rose-200 rounded-lg focus:ring-2 focus:ring-rose-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEditOrdered((o) => o + 1)}
+                    className="w-10 h-10 bg-white border border-rose-200 text-rose-800 font-bold rounded-lg flex items-center justify-center hover:bg-rose-100"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                {editingItem.unitPrice > 0 && (
+                  <div className="text-xs text-rose-700 text-right font-medium">
+                    ราคารวมประมาณการ: <strong>{formatBaht(editOrdered * editingItem.unitPrice)}</strong>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="pt-2 grid grid-cols-2 gap-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="min-h-[46px] px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-100 transition-colors"
+              >
+                ยกเลิก
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={isSavingEdit}
+                className="min-h-[46px] px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/20 active:scale-[0.98] transition-all touch-manipulation"
+              >
+                <Check className="w-4 h-4" />
+                <span>{isSavingEdit ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Modal for Formatted LINE Message */}
       {previewSupplier && (
