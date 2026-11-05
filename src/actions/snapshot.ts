@@ -42,88 +42,97 @@ export async function archiveAndResetWeeklyStock(note?: string) {
   try {
     const trimmedNote = note && note.trim().length > 0 ? note.trim() : null;
 
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Fetch all items with supplier names
-      const items = await tx.item.findMany({
-        include: {
-          supplier: {
-            select: {
-              name: true,
-            },
+    // 1. Fetch all items with supplier names outside the transaction to reduce lock/timeout time
+    const items = await prisma.item.findMany({
+      include: {
+        supplier: {
+          select: {
+            name: true,
           },
         },
-        orderBy: [
-          { supplier: { name: "asc" } },
-          { name: "asc" },
-        ],
-      });
+      },
+      orderBy: [
+        { supplier: { name: "asc" } },
+        { name: "asc" },
+      ],
+    });
 
-      if (items.length === 0) {
-        throw new Error("ไม่พบรายการสินค้าในระบบที่จะจัดเก็บ");
+    if (items.length === 0) {
+      throw new Error("ไม่พบรายการสินค้าในระบบที่จะจัดเก็บ");
+    }
+
+    // 2. Compute snapshot metrics
+    let totalItemsChecked = 0;
+    let totalOutOfStock = 0;
+    let totalOrderAmount = 0;
+
+    const snapshotItemsData = items.map((item) => {
+      const isChecked = item.status !== "NONE";
+      if (isChecked) {
+        totalItemsChecked++;
       }
 
-      // 2. Compute snapshot metrics
-      let totalItemsChecked = 0;
-      let totalOutOfStock = 0;
-      let totalOrderAmount = 0;
+      const isOutOfStock = item.status === "OUT_OF_STOCK";
+      let orderQty: number | null = null;
+      let lineTotal = 0;
 
-      const snapshotItemsData = items.map((item) => {
-        const isChecked = item.status !== "NONE";
-        if (isChecked) {
-          totalItemsChecked++;
-        }
+      if (isOutOfStock) {
+        totalOutOfStock++;
+        orderQty = item.ordered && item.ordered > 0 ? item.ordered : 1;
+        lineTotal = item.unitPrice * orderQty;
+        totalOrderAmount += lineTotal;
+      }
 
-        const isOutOfStock = item.status === "OUT_OF_STOCK";
-        let orderQty: number | null = null;
-        let lineTotal = 0;
-
-        if (isOutOfStock) {
-          totalOutOfStock++;
-          orderQty = item.ordered && item.ordered > 0 ? item.ordered : 1;
-          lineTotal = item.unitPrice * orderQty;
-          totalOrderAmount += lineTotal;
-        }
-
-        return {
-          supplierName: item.supplier.name,
-          itemName: item.name,
-          unit: item.unit,
-          unitPrice: item.unitPrice,
-          status: item.status,
-          remain: item.remain,
-          ordered: orderQty,
-          lineTotal,
-        };
-      });
-
-      // 3. Create SnapshotArchive record with nested SnapshotItems
-      const snapshot = await tx.snapshotArchive.create({
-        data: {
-          snapshotDate: new Date(),
-          note: trimmedNote,
-          totalItemsChecked,
-          totalOutOfStock,
-          totalOrderAmount,
-          items: {
-            create: snapshotItemsData,
-          },
-        },
-        include: {
-          items: true,
-        },
-      });
-
-      // 4. Atomically reset all live items to NONE
-      await tx.item.updateMany({
-        data: {
-          status: "NONE",
-          remain: null,
-          ordered: null,
-        },
-      });
-
-      return snapshot;
+      return {
+        supplierName: item.supplier.name,
+        itemName: item.name,
+        unit: item.unit,
+        unitPrice: item.unitPrice,
+        status: item.status,
+        remain: item.remain,
+        ordered: orderQty,
+        lineTotal,
+      };
     });
+
+    // 3. Perform database writes inside an atomic transaction with generous timeout and bulk insertion
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // Create SnapshotArchive parent record
+        const snapshot = await tx.snapshotArchive.create({
+          data: {
+            snapshotDate: new Date(),
+            note: trimmedNote,
+            totalItemsChecked,
+            totalOutOfStock,
+            totalOrderAmount,
+          },
+        });
+
+        // Fast bulk insert of all snapshot items using createMany (single multi-value SQL query)
+        await tx.snapshotItem.createMany({
+          data: snapshotItemsData.map((item) => ({
+            ...item,
+            snapshotId: snapshot.id,
+          })),
+        });
+
+        // Atomically reset all live items to NONE
+        await tx.item.updateMany({
+          data: {
+            status: "NONE",
+            remain: null,
+            ordered: null,
+          },
+        });
+
+        return snapshot;
+      },
+      {
+        maxWait: 10000, // wait up to 10s to acquire transaction connection
+        timeout: 30000, // allow up to 30s for the transaction to complete
+      }
+    );
 
     safeRevalidate();
 
@@ -137,7 +146,7 @@ export async function archiveAndResetWeeklyStock(note?: string) {
         totalOutOfStock: result.totalOutOfStock,
         totalOrderAmount: result.totalOrderAmount,
         createdAt: result.createdAt,
-        itemsCount: result.items.length,
+        itemsCount: snapshotItemsData.length,
       },
     };
   } catch (error) {
