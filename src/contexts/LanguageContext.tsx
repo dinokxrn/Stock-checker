@@ -26,7 +26,8 @@ const translations: Record<Language, Record<string, string>> = {
     logout: "ออกจากระบบ",
     logout_confirm: "คุณต้องการออกจากระบบหรือไม่?",
 
-    // Statuses
+    // Statuses & Badges
+    status_all: "สถานะ: ทั้งหมด",
     status_none: "ยังไม่นับ",
     status_in_stock: "มีพอ",
     status_low_stock: "ใกล้หมด",
@@ -34,20 +35,39 @@ const translations: Record<Language, Record<string, string>> = {
     status_ordered: "สั่งแล้ว",
     status_pending_order: "รอสั่ง",
 
+    // Common Buttons & Actions
+    cancel: "ยกเลิก",
+    close: "ปิด",
+    close_window: "ปิดหน้าต่าง",
+    confirm_delete: "ยืนยันการลบ",
+    deleting: "กำลังลบ...",
+    saving: "กำลังบันทึก...",
+    save_changes: "บันทึกการแก้ไข",
+    edit_button: "แก้ไข",
+    copied_badge: "คัดลอกแล้ว",
+    clear_filter: "ล้างตัวกรอง",
+    reset_filter: "รีเซ็ตตัวกรอง",
+    clear_search: "ล้างคำค้นหา",
+
     // Stock check view
     counting_progress: "ความคืบหน้าการตรวจนับ",
     reset_button: "รีเซ็ต",
+    tooltip_reset_weekly: "รีเซ็ตและจัดเก็บข้อมูลประจำสัปดาห์",
     search_placeholder: "ค้นหาชื่อสินค้า หรือ หมายเหตุ...",
     filter_all: "ทั้งหมด",
+    all_suppliers: "คู่ค้าทั้งหมด",
     items_to_count: "รอนับอีก",
     items_counted: "นับแล้ว",
     items_unit: "รายการ",
+    showing_items: "แสดงผล",
+    view_orders: "ดูรายการสั่งซื้อ",
+    counted_progress_summary: "ตรวจแล้ว",
     all_counted_title: "ตรวจนับสต็อกครบถ้วนทุกรายการแล้ว! 🎉",
     all_counted_desc: "บันทึกสต็อกครบทั้งหมดแล้ว หากต้องการตรวจสอบ แก้ไขจำนวน หรือส่งออกรายการสั่งซื้อ ให้ไปที่หน้าสรุปสั่งซื้อ",
     go_to_order_summary: "ไปที่หน้าสรุปรายการสั่งซื้อ",
     empty_uncounted_title: "ไม่มีรายการสินค้ารอนับในหมวดนี้",
     empty_uncounted_desc: "รายการสินค้าทุกตัวในหมวดนี้ถูกบันทึกแล้ว",
-    reset_filter: "รีเซ็ตตัวกรอง",
+    empty_filter_desc_active: "ลองรีเซ็ตตัวกรองเพื่อดูรายการทั้งหมด หรือไปที่หน้าสรุปสั่งซื้อเพื่อแก้ไขรายการที่นับแล้ว",
     unit_label: "หน่วย",
     price_label: "ราคา",
     remain_label: "จำนวนคงเหลือ (Remain)",
@@ -58,6 +78,32 @@ const translations: Record<Language, Record<string, string>> = {
     saved_badge: "บันทึกแล้ว",
     syncing_badge: "กำลังซิงค์...",
     tap_to_count_hint: "แตะเลือกสถานะเพื่อเริ่มบันทึกการตรวจนับ",
+    weekly_reset_success: "จัดเก็บประวัติและรีเซ็ตสต็อกทั้งหมดเรียบร้อยแล้ว (สามารถดูย้อนหลังได้ที่เมนูประวัติ)",
+    stock_save_error: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
+
+    // Zero Remain Warning Modal
+    zero_remain_title: "จำนวนคงเหลือเป็น 0",
+    zero_remain_desc_item: "สินค้า",
+    zero_remain_desc_tail: "ระบุคงเหลือ 0",
+    zero_remain_prompt_change: "ต้องการเปลี่ยนสถานะเป็น \"สินค้าหมด\" หรือไม่?",
+    btn_change_to_out_of_stock: "เปลี่ยนเป็น \"สินค้าหมด\"",
+    btn_keep_low_stock: "คงสถานะ \"ใกล้หมด (เหลือ 0)\"",
+    btn_cancel_adjust_qty: "ยกเลิก (เพื่อปรับจำนวนใหม่)",
+
+    // Weekly Reset Modal
+    reset_modal_title: "รีเซ็ตประจำสัปดาห์",
+    reset_modal_subtitle: "จัดเก็บประวัติและเริ่มรอบใหม่",
+    reset_warning_title: "การดำเนินการนี้จะจัดเก็บประวัติและล้างสถานะ",
+    reset_warning_desc: "ระบบจะบันทึกสถานะการนับปัจจุบันทั้งหมดเป็น ประวัติย้อนหลัง (Snapshot Archive) และรีเซ็ตสถานะสินค้าทั้งหมดกลับเป็น \"ยังไม่นับ\" เพื่อเตรียมพร้อมสำหรับการนับรอบถัดไป",
+    reset_snapshot_preview: "ข้อมูลที่จะถูกจัดเก็บใน Snapshot รอบนี้",
+    reset_snapshot_summary_title: "ข้อมูลที่จะถูกจัดเก็บใน Snapshot รอบนี้",
+    reset_total_amount_label: "ยอดสั่งซื้อประมาณการรวม:",
+    reset_note_label: "บันทึกช่วยจำ (ไม่บังคับ):",
+    reset_note_placeholder: "เช่น รอบสัปดาห์ที่ 1 พ.ย. 67, นับก่อนส่งของ...",
+    reset_in_progress: "กำลังจัดเก็บและรีเซ็ต...",
+    confirm_archive_and_reset: "ยืนยันจัดเก็บและรีเซ็ต",
+    reset_error: "เกิดข้อผิดพลาดในการรีเซ็ตสต็อก",
+    network_error: "เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง",
 
     // Order dashboard
     dashboard_title: "สรุปรายการสั่งซื้อและสต็อก",
@@ -88,223 +134,600 @@ const translations: Record<Language, Record<string, string>> = {
     mark_all_ordered: "ติ๊กสั่งแล้วทั้งหมด",
     unmark_all_ordered: "ยกเลิกสั่งแล้ว",
     preview_line_message: "ดูตัวอย่างข้อความ",
-    edit_button: "แก้ไข",
     in_stock_section: "สินค้ามีพอในสต็อก",
+    low_stock_section: "สินค้าใกล้หมด",
+    out_of_stock_section: "สินค้าหมด (ต้องสั่งซื้อ)",
     uncounted_section: "ยังไม่ได้นับในรอบนี้",
     hide_items: "ซ่อน",
+    view_items: "ดูรายการ",
     view_edit_items: "ดู/แก้ไข",
-    cancel: "ยกเลิก",
-    save_changes: "บันทึกการแก้ไข",
-    saving: "กำลังบันทึก...",
+    no_items_to_order: "ไม่มีรายการสินค้าที่ต้องสั่งซื้อ",
+    preview: "ตัวอย่าง",
+    tap_pencil_to_edit: "แตะดินสอเพื่อแก้ไขสถานะ",
+    adjust_remain_or_edit: "ปรับจำนวนคงเหลือ หรือแก้ไขสถานะ",
+    go_to_stock_count: "ไปตรวจนับสต็อก →",
+    from_suppliers_count: "จาก {count} บริษัท",
+    no_suppliers_found: "ไม่พบคู่ค้าที่ตรงตามเงื่อนไข",
+    empty_search_hint: "ลองเปลี่ยนคำค้นหา หรือเลือกแท็บอื่น",
+    empty_normal_hint: "ทุกรายการสต็อกอยู่ในระดับปกติ",
+    toast_all_ordered: "ติ๊กสั่งแล้วทุกรายการ ✓",
+    toast_all_unmarked: "ยกเลิกสถานะสั่งแล้วทั้งหมด",
+    toast_copied_supplier: "คัดลอกรายการสต็อกไปยังคลิปบอร์ดแล้ว",
+    toast_copy_error: "ไม่สามารถคัดลอกอัตโนมัติได้ กรุณากดดูตัวอย่างเพื่อคัดลอก",
+    toast_copied_all: "คัดลอกสรุปทุกบริษัทไปยังคลิปบอร์ดแล้ว",
 
-    // Modal Edit
-    edit_stock_title: "แก้ไขสถานะสต็อก",
+    // Quick Edit Modal
+    edit_stock_title: "แก้ไขสต็อกสินค้า",
     select_stock_status: "เลือกสถานะสต็อก:",
-    recount_status: "ยังไม่นับ (นับใหม่)",
-    recount_desc: "ย้ายกลับไปหน้านับ",
-    in_stock_desc: "ไม่ต้องสั่งเพิ่ม",
-    low_stock_desc: "ระบุจำนวนคงเหลือ",
-    out_of_stock_desc: "ระบุจำนวนสั่ง",
+    recount_status: "นับใหม่ (ยังไม่นับ)",
+    in_stock_desc: "มีของเพียงพอ ไม่ต้องสั่ง",
+    low_stock_desc: "ของเหลือน้อย ระบุจำนวนคงเหลือ",
+    out_of_stock_desc: "ของหมด ระบุจำนวนที่ต้องสั่ง",
+    recount_desc: "ล้างสถานะเพื่อรอนับใหม่",
 
-    // LINE message headers
+    // LINE & WhatsApp Exports
     line_order_summary: "สรุปรายการสั่งซื้อ",
     line_date: "วันที่",
     line_out_of_stock_section: "🔴 สินค้าหมด (ต้องสั่ง):",
     line_low_stock_section: "🟡 สินค้าใกล้หมด:",
     line_no_items: "(ไม่มีรายการสินค้าหมดหรือใกล้หมด)",
     line_estimated_total: "💰 ยอดสั่งซื้อประมาณการ:",
-    line_grand_total: "💵 ยอดสั่งซื้อประมาณการรวมทุกบริษัท:",
     line_note: "📝 หมายเหตุ:",
+    line_grand_total: "💵 ยอดสั่งซื้อประมาณการรวมทุกบริษัท:",
+    all_stock_normal: "(สต็อกมีครบทุกรายการ ไม่มีสินค้าหมดหรือใกล้หมด)",
+    line_preview_title: "ตัวอย่างข้อความสั่งซื้อ",
+    copy_message: "คัดลอกข้อความ",
+    open_line_app: "เปิดแอป LINE",
+    all_suppliers_summary_title: "สรุปสต็อกทุกบริษัท (แยกตามบริษัท)",
+    line_preview_subtitle: "ตัวอย่างข้อความสำหรับส่ง LINE",
 
-    // Master
+    // Master Data
     master_title: "จัดการข้อมูลหลัก",
+    master_subtitle_summary: "Master Data (คู่ค้า {suppliers} บริษัท / สินค้า {items} รายการ)",
+    refresh_data: "รีเฟรชข้อมูล",
+    tab_items: "รายการสินค้า",
+    tab_suppliers: "บริษัทคู่ค้า",
+    search_items_placeholder: "ค้นหาชื่อสินค้า, หมายเหตุ...",
+    search_suppliers_placeholder: "ค้นหาชื่อคู่ค้า, เบอร์โทร...",
     add_item: "เพิ่มสินค้า",
     add_supplier: "เพิ่มคู่ค้า",
-    rank_label: "ลำดับ",
+    all_suppliers_filter: "ทั้งหมด ({count})",
+    empty_items_title: "ไม่พบรายการสินค้า",
+    empty_items_desc: "ยังไม่มีสินค้าที่ตรงกับเงื่อนไขการค้นหาหรือตัวกรองที่เลือก กดปุ่ม \"เพิ่มสินค้าใหม่\" เพื่อเริ่มต้น",
+    rank_tooltip: "แตะเพื่อระบุลำดับการเดินนับ",
+    move_up: "เลื่อนขึ้นด้านบน",
+    move_down: "เลื่อนลงด้านล่าง",
+    edit_item_tooltip: "แก้ไขรายละเอียดสินค้า",
+    delete_item_tooltip: "ลบสินค้า",
+    counting_unit_label: "หน่วยนับ:",
+    price_colon_label: "ราคา:",
+    reorder_modal_title: "ย้ายลำดับการเดินนับ",
+    item_colon_label: "สินค้า:",
+    current_rank_label: "ลำดับปัจจุบัน: #{rank} จาก {total} รายการ",
+    target_rank_label: "ต้องการย้ายไปที่ลำดับ:",
+    rank_first: "อันดับแรกสุด (#1)",
+    rank_last: "อันดับท้ายสุด (#{total})",
+    moving_rank: "กำลังย้าย...",
+    save_rank: "บันทึกลำดับ",
+    delete_item_confirm_title: "ยืนยันการลบสินค้า?",
+    delete_item_confirm_desc: "คุณต้องการลบรายการสินค้า \"{name}\" ออกจากระบบใช่หรือไม่?",
+    error_delete_item: "ไม่สามารถลบรายการสินค้าได้",
+    error_swap_item_order: "เกิดข้อผิดพลาดในการสลับลำดับสินค้า",
+    error_set_item_position: "เกิดข้อผิดพลาดในการเปลี่ยนตำแหน่งสินค้า",
 
-    // History
-    history_title: "ประวัติการตรวจนับ",
-    archive_and_reset: "รีเซ็ตประจำสัปดาห์",
+    // Item Modal
+    add_item_title: "เพิ่มสินค้าใหม่",
+    edit_item_title: "แก้ไขรายการสินค้า",
+    add_item_desc: "กรอกข้อมูลสินค้าเพื่อนำไปตรวจนับในสต็อก",
+    edit_item_desc: "ปรับปรุงข้อมูลสินค้า ราคา และหน่วยนับ",
+    item_name_label: "ชื่อสินค้า",
+    item_name_placeholder: "เช่น น้ำดื่มสิงห์ 600ml, มาม่าต้มยำกุ้ง",
+    supplier_distributor_label: "บริษัทคู่ค้า / ผู้จัดจำหน่าย",
+    select_supplier_placeholder: "-- เลือกคู่ค้า --",
+    unit_price_thb_label: "ราคาต่อหน่วย (฿)",
+    counting_unit_field_label: "หน่วยนับสินค้า",
+    counting_unit_placeholder: "เช่น ชิ้น, ลัง, ถุง",
+    quick_units_hint: "หน่วยนับแนะนำแตะด่วน:",
+    item_note_field_label: "หมายเหตุสินค้า (ไม่บังคับ)",
+    item_note_placeholder: "เช่น ตำแหน่งจัดเก็บ, รหัสบาร์โค้ด, เงื่อนไขพิเศษ",
+    val_item_name_required: "กรุณากรอกชื่อสินค้า",
+    val_supplier_required: "กรุณาเลือกบริษัทคู่ค้า",
+    val_unit_price_positive: "ราคาต่อหน่วยต้องเป็นตัวเลข 0 หรือมากกว่า",
+    error_save_item: "เกิดข้อผิดพลาดในการบันทึก",
 
-    // Auth
-    pin_login_title: "Dino Stock Checker",
-    pin_login_desc: "ระบบตรวจนับสต็อกสินค้า",
-    enter_pin: "กรุณากดรหัส PIN 4 หลัก",
-    pin_error: "รหัส PIN ไม่ถูกต้อง",
+    // Supplier List & Modal
+    empty_suppliers_title: "ยังไม่มีข้อมูลบริษัทคู่ค้า",
+    empty_suppliers_desc: "กดปุ่ม \"เพิ่มคู่ค้าใหม่\" ด้านบนเพื่อเริ่มต้นสร้างข้อมูลบริษัทและกำหนดเกณฑ์ยอดสั่งซื้อขั้นต่ำ",
+    items_count_badge: "{count} รายการสินค้า",
+    min_order_badge: "ขั้นต่ำ ฿{amount}",
+    phone_label: "โทร:",
+    edit_supplier_btn: "แก้ไขคู่ค้า",
+    delete_supplier_tooltip: "ลบคู่ค้า",
+    delete_supplier_confirm_title: "ยืนยันการลบคู่ค้า?",
+    delete_supplier_confirm_desc: "คุณแน่ใจหรือไม่ว่าต้องการลบ \"{name}\" ?",
+    delete_supplier_cascade_warning: "⚠️ คำเตือน: คู่ค้านี้มีสินค้าผูกอยู่ {count} รายการ การลบคู่ค้าจะลบรายการสินค้าที่ผูกอยู่ทั้งหมดโดยอัตโนมัติ (Cascade)",
+    error_delete_supplier: "ไม่สามารถลบข้อมูลคู่ค้าได้",
+    add_supplier_title: "เพิ่มบริษัทคู่ค้าใหม่",
+    edit_supplier_title: "แก้ไขข้อมูลคู่ค้า",
+    add_supplier_desc: "กรอกข้อมูลเพื่อเชื่อมต่อกับสินค้าและออเดอร์",
+    edit_supplier_desc: "ปรับปรุงข้อมูลติดต่อและยอดขั้นต่ำ",
+    supplier_name_label: "ชื่อบริษัท / ร้านคู่ค้า",
+    supplier_name_placeholder: "เช่น แม็คโคร (Makro), บุญรอดบริวเวอรี่",
+    min_order_amount_label: "ยอดสั่งซื้อขั้นต่ำ (บาท)",
+    min_order_amount_hint: "ใช้สำหรับคำนวณแถบความคืบหน้า (Progress Bar) และแจ้งเตือนเมื่อยอดสั่งไม่ถึงเกณฑ์",
+    weekly_order_days_label: "วันสั่งของประจำสัปดาห์ (Order Days)",
+    order_days_selected_count: "เลือก {count} วัน",
+    order_days_not_specified: "ยังไม่ได้ระบุ",
+    order_days_hint: "แตะเลือกวันสั่งของเพื่อให้ระบบแจ้งเตือนอัตโนมัติเมื่อใกล้ถึงวันสั่งหรือถึงรอบสั่งของวันนี้",
+    contact_phone_label: "เบอร์โทรศัพท์ติดต่อ / เซลส์ (ไม่บังคับ)",
+    contact_phone_placeholder: "เช่น 02-123-4567, 081-999-8888",
+    supplier_note_label: "หมายเหตุ / เงื่อนไขการสั่งซื้อ (ไม่บังคับ)",
+    supplier_note_placeholder: "เช่น ส่งของทุกวันพุธ, ตัดรอบ 15:00 น.",
+    val_supplier_name_required: "กรุณากรอกชื่อบริษัทคู่ค้า",
+    val_min_order_positive: "ยอดสั่งซื้อขั้นต่ำต้องเป็นตัวเลข 0 หรือมากกว่า",
+    error_save_supplier: "เกิดข้อผิดพลาดในการบันทึก",
+
+    // Inline Price Editor
+    val_price_positive: "ราคาต้องเป็นตัวเลขที่ถูกต้องและไม่ติดลบ",
+    error_save_price: "เกิดข้อผิดพลาดในการบันทึก",
+    save_price_btn: "บันทึกราคา",
+    edit_price_tooltip: "แตะเพื่อแก้ไขราคา",
+
+    // Schedule Alerts & Badges
+    schedule_alert_today_title: "🚨 วันนี้ถึงรอบสั่งของแล้ว!",
+    schedule_alert_tomorrow_title: "⏰ แจ้งเตือน: พรุ่งนี้มีรอบสั่งของ!",
+    schedule_alert_today_desc: "ตรวจนับสต็อกและส่งออเดอร์ให้เซลส์ก่อนตัดรอบ",
+    schedule_alert_tomorrow_desc: "เตรียมตรวจนับสต็อกล่วงหน้าสำหรับคู่ค้าที่มีรอบสั่งพรุ่งนี้",
+    dismiss_alert: "ปิดการแจ้งเตือน",
+    order_today_badge: "สั่งวันนี้:",
+    order_tomorrow_badge: "สั่งพรุ่งนี้:",
+    order_cycle_today: "รอบสั่งวันนี้!",
+    order_cycle_tomorrow: "รอบสั่งพรุ่งนี้!",
+    today: "วันนี้",
+    tomorrow: "พรุ่งนี้",
+
+    // History View & Exports
+    history_page_title: "ประวัติการนับสต็อก (History)",
+    history_subtitle_count: "บันทึก Snapshot ประจำสัปดาห์ทั้งหมด {count} ครั้ง",
+    history_search_placeholder: "ค้นหาวันที่, บันทึกช่วยจำ หรือชื่อสินค้า...",
+    history_empty_title: "ยังไม่มีประวัติการนับสต็อก",
+    history_search_empty_title: "ไม่พบประวัติที่ตรงกับคำค้นหา",
+    history_empty_desc: "เมื่อกดปุ่ม \"รีเซ็ต\" ในหน้าตรวจนับสต็อก ข้อมูลสรุปของรอบนั้นจะถูกบันทึกมาที่นี่โดยอัตโนมัติ",
+    go_to_stock_count_btn: "ไปที่หน้าตรวจนับสต็อก",
+    delete_snapshot_tooltip: "ลบประวัตินี้",
+    total_order_amount_col: "ยอดสั่งซื้อรวม",
+    copy_line_summary_btn: "คัดลอกสรุป (LINE)",
+    download_csv_tooltip: "ดาวน์โหลดไฟล์ CSV",
+    view_items_btn: "ดูรายการ",
+    collapse_items_btn: "ย่อ",
+    all_suppliers_tab: "คู่ค้าทั้งหมด ({count})",
+    confirm_delete_snapshot: "คุณแน่ใจหรือไม่ว่าต้องการลบประวัติการนับรอบนี้? การกระทำนี้ไม่สามารถย้อนกลับได้",
+    toast_snapshot_deleted: "ลบประวัติการนับเรียบร้อยแล้ว",
+    error_delete_snapshot: "เกิดข้อผิดพลาดในการลบประวัติ",
+    toast_csv_exported: "ดาวน์โหลดไฟล์ CSV เรียบร้อยแล้ว",
+    error_export_csv: "เกิดข้อผิดพลาดในการดาวน์โหลด CSV",
+    toast_copied_line_summary: "คัดลอกสรุปสั่งซื้อลงคลิปบอร์ดแล้ว",
+    error_copy_failed: "ไม่สามารถคัดลอกได้",
+    snapshot_line_header: "📦 สรุปสต็อกย้อนหลัง (Snapshot)",
+    snapshot_line_date: "📅 วันที่:",
+    snapshot_line_note: "📝 บันทึก:",
+    snapshot_line_out_of_stock: "🔴 สินค้าที่หมดแล้ว:",
+    snapshot_line_order_qty: "สั่ง",
+    snapshot_line_low_stock: "🟡 สินค้าที่ใกล้หมด:",
+    snapshot_line_remain_qty: "เหลือ",
+    snapshot_line_no_items: "(ไม่มีรายการสินค้าหมดหรือใกล้หมด)",
+    snapshot_line_grand_total: "💰 ยอดสั่งซื้อรวมทั้งหมด:",
+    csv_header_no: "ลำดับ",
+    csv_header_supplier: "คู่ค้า",
+    csv_header_item_name: "ชื่อสินค้า",
+    csv_header_unit: "หน่วย",
+    csv_header_unit_price: "ราคาต่อหน่วย(บาท)",
+    csv_header_status: "สถานะ",
+    csv_header_remain: "คงเหลือ",
+    csv_header_order_qty: "จำนวนที่สั่ง",
+    csv_header_line_total: "ยอดรวม(บาท)",
+
+    // PIN Settings Modal
+    pin_modal_title: "เปลี่ยนรหัสผ่าน PIN",
+    pin_modal_subtitle: "สำหรับเข้าใช้งานระบบ",
+    pin_change_success: "เปลี่ยนรหัส PIN สำเร็จเรียบร้อยแล้ว!",
+    hide_digits: "ซ่อนตัวเลข",
+    show_digits: "แสดงตัวเลข",
+    current_pin_label: "รหัส PIN ปัจจุบัน",
+    current_pin_placeholder: "ระบุรหัสเดิม (ค่าเริ่มต้น 1234)",
+    new_pin_label: "รหัส PIN ใหม่ (4 หลัก)",
+    new_pin_placeholder: "ระบุตัวเลข 4 หลัก",
+    confirm_pin_label: "ยืนยันรหัส PIN ใหม่",
+    confirm_pin_placeholder: "กรอกรหัสใหม่อีกครั้ง",
+    save_new_pin_btn: "บันทึกรหัสใหม่",
+    val_current_pin_required: "กรุณาระบุรหัส PIN ปัจจุบัน",
+    val_new_pin_format: "รหัส PIN ใหม่ต้องเป็นตัวเลข 4 หลัก",
+    val_pin_mismatch: "รหัส PIN ใหม่และการยืนยันไม่ตรงกัน",
+    val_pin_must_differ: "รหัส PIN ใหม่ต้องไม่ซ้ำกับรหัส PIN เดิม",
+    error_change_pin: "ไม่สามารถเปลี่ยนรหัส PIN ได้",
+    error_connection: "เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง",
   },
+
   en: {
     // Nav
-    nav_stock: "Stock Count",
-    nav_order: "Orders",
+    nav_stock: "Stock Check",
+    nav_order: "Order Summary",
     nav_master: "Master Data",
     nav_history: "History",
 
     // Header
     app_title: "Dino Stock",
-    app_subtitle: "Inventory",
+    app_subtitle: "Stock Checker",
     change_pin: "Change PIN",
-    logout: "Logout",
-    logout_confirm: "Do you want to logout?",
+    logout: "Log Out",
+    logout_confirm: "Are you sure you want to log out?",
 
-    // Statuses
+    // Statuses & Badges
+    status_all: "Status: All",
     status_none: "Uncounted",
     status_in_stock: "In Stock",
     status_low_stock: "Low Stock",
     status_out_of_stock: "Out of Stock",
     status_ordered: "Ordered",
-    status_pending_order: "Pending",
+    status_pending_order: "Pending Order",
+
+    // Common Buttons & Actions
+    cancel: "Cancel",
+    close: "Close",
+    close_window: "Close Window",
+    confirm_delete: "Confirm Delete",
+    deleting: "Deleting...",
+    saving: "Saving...",
+    save_changes: "Save Changes",
+    edit_button: "Edit",
+    copied_badge: "Copied",
+    clear_filter: "Clear Filters",
+    reset_filter: "Reset Filters",
+    clear_search: "Clear Search",
 
     // Stock check view
-    counting_progress: "Counting Progress",
+    counting_progress: "Stock Count Progress",
     reset_button: "Reset",
+    tooltip_reset_weekly: "Weekly Archive & Reset",
     search_placeholder: "Search item name or notes...",
     filter_all: "All",
+    all_suppliers: "All Suppliers",
     items_to_count: "Remaining",
     items_counted: "Counted",
     items_unit: "items",
+    showing_items: "Showing",
+    view_orders: "View Orders",
+    counted_progress_summary: "Counted",
     all_counted_title: "All Stock Items Counted! 🎉",
-    all_counted_desc: "All inventory items have been recorded. To review, edit quantities, or export order messages, visit the Orders page.",
+    all_counted_desc: "All inventory items have been recorded. To review, edit quantities, or export order messages, visit the Order Summary page.",
     go_to_order_summary: "Go to Order Summary",
     empty_uncounted_title: "No uncounted items in this filter",
     empty_uncounted_desc: "All items in this category have been checked.",
-    reset_filter: "Reset Filters",
+    empty_filter_desc_active: "Try resetting filters to see all items, or go to order summary to edit counted items.",
     unit_label: "Unit",
     price_label: "Price",
-    remain_label: "Remaining Qty (Remain)",
-    order_qty_label: "Order Qty (To Order)",
+    remain_label: "Remaining Quantity (Remain)",
+    order_qty_label: "Order Quantity (Order Qty)",
     estimated_subtotal: "Estimated Subtotal:",
-    quick_buttons: "Quick:",
+    quick_buttons: "Quick Buttons:",
     confirm_button: "Confirm",
     saved_badge: "Saved",
     syncing_badge: "Syncing...",
-    tap_to_count_hint: "Tap a status to begin counting",
+    tap_to_count_hint: "Tap a status pill to start counting this item",
+    weekly_reset_success: "Weekly history archived and stock reset successfully (view in History page)",
+    stock_save_error: "An error occurred while saving stock data",
+
+    // Zero Remain Warning Modal
+    zero_remain_title: "Remaining Quantity is 0",
+    zero_remain_desc_item: "Item",
+    zero_remain_desc_tail: "is set to 0 remaining.",
+    zero_remain_prompt_change: "Would you like to change status to \"Out of Stock\"?",
+    btn_change_to_out_of_stock: "Change to \"Out of Stock\"",
+    btn_keep_low_stock: "Keep \"Low Stock (0 Remaining)\"",
+    btn_cancel_adjust_qty: "Cancel (Adjust Quantity)",
+
+    // Weekly Reset Modal
+    reset_modal_title: "Weekly Reset",
+    reset_modal_subtitle: "Archive History & Start New Cycle",
+    reset_warning_title: "This action will archive history and clear status",
+    reset_warning_desc: "The system will archive all current counts into a historical snapshot, then reset all items back to Uncounted (NONE) for the next cycle.",
+    reset_snapshot_preview: "Data to be archived in this Snapshot",
+    reset_snapshot_summary_title: "Data to be archived in this Snapshot",
+    reset_total_amount_label: "Estimated Grand Total:",
+    reset_note_label: "Memo / Note (optional):",
+    reset_note_placeholder: "e.g. Week 1 Nov, counted before delivery...",
+    reset_in_progress: "Archiving and resetting...",
+    confirm_archive_and_reset: "Confirm Archive & Reset",
+    reset_error: "Error resetting stock",
+    network_error: "Connection error, please try again",
 
     // Order dashboard
-    dashboard_title: "Order Summary & Stock",
-    dashboard_subtitle: "Items to order, estimated costs, and order status (edit stock here)",
+    dashboard_title: "Order Summary & Stock Status",
+    dashboard_subtitle: "Items to order, estimated costs, and order status (edit stock counts here)",
     realtime_badge: "Real-time",
     out_of_stock_must_order: "Out of Stock (Order)",
-    low_stock_prep_order: "Low Stock",
+    low_stock_prep_order: "Low Stock Items",
     prep_order_desc: "Prepare to order",
-    estimated_grand_total: "Estimated Order Total",
-    price_calc_desc: "Based on unit price",
+    estimated_grand_total: "Estimated Total",
+    price_calc_desc: "Calculated from unit prices",
     order_status_title: "Order Status",
-    order_status_desc: "Items ordered",
-    copy_all_by_supplier: "Copy All Summary (By Supplier)",
+    order_status_desc: "Items already ordered",
+    copy_all_by_supplier: "Copy All Summary (By Company)",
     copy_all_success: "Copied all suppliers summary!",
     preview_all: "Preview All",
-    search_supplier_item: "Search supplier or item name...",
-    tab_must_order: "Need Order",
+    search_supplier_item: "Search supplier or item name to order...",
+    tab_must_order: "Needs Order",
     tab_out_of_stock: "Out of Stock",
     tab_low_stock: "Low Stock",
     tab_all: "All",
     supplier_order_total: "Order Total",
     min_order_label: "Min Order:",
-    min_order_met: "✓ Min Order Met",
-    min_order_shortfall: "Shortfall",
+    min_order_met: "✓ Met minimum order threshold",
+    min_order_shortfall: "Short by",
     copy_to_line: "Copy to LINE",
-    copy_line_success: "Copied to clipboard!",
-    open_in_line: "Open LINE",
+    copy_line_success: "Message copied!",
+    open_in_line: "Open in LINE",
     mark_all_ordered: "Mark All Ordered",
-    unmark_all_ordered: "Unmark All",
+    unmark_all_ordered: "Unmark All Ordered",
     preview_line_message: "Preview Message",
-    edit_button: "Edit",
     in_stock_section: "In-Stock Items",
-    uncounted_section: "Uncounted This Cycle",
+    low_stock_section: "Low Stock Items",
+    out_of_stock_section: "Out of Stock (Needs Order)",
+    uncounted_section: "Uncounted in this cycle",
     hide_items: "Hide",
-    view_edit_items: "View/Edit",
-    cancel: "Cancel",
-    save_changes: "Save Changes",
-    saving: "Saving...",
+    view_items: "View Items",
+    view_edit_items: "View / Edit",
+    no_items_to_order: "No items need ordering",
+    preview: "Preview",
+    tap_pencil_to_edit: "Tap pencil to edit status",
+    adjust_remain_or_edit: "Adjust remain or edit status",
+    go_to_stock_count: "Go to Stock Count →",
+    from_suppliers_count: "From {count} suppliers",
+    no_suppliers_found: "No matching suppliers found",
+    empty_search_hint: "Try changing your search keywords or select another tab",
+    empty_normal_hint: "All inventory items are at normal levels",
+    toast_all_ordered: "Marked all items as ordered ✓",
+    toast_all_unmarked: "Unmarked all ordered items",
+    toast_copied_supplier: "Supplier stock summary copied to clipboard",
+    toast_copy_error: "Automatic copy failed. Please open preview to copy manually.",
+    toast_copied_all: "All suppliers summary copied to clipboard",
 
-    // Modal Edit
-    edit_stock_title: "Edit Stock Status",
+    // Quick Edit Modal
+    edit_stock_title: "Edit Stock Item",
     select_stock_status: "Select Stock Status:",
-    recount_status: "Uncounted (Recount)",
-    recount_desc: "Move back to count page",
-    in_stock_desc: "Sufficient, no order needed",
-    low_stock_desc: "Specify remaining quantity",
-    out_of_stock_desc: "Specify order quantity",
+    recount_status: "Recount (Uncounted)",
+    in_stock_desc: "Sufficient stock, no order needed",
+    low_stock_desc: "Running low, specify remaining quantity",
+    out_of_stock_desc: "Completely out, specify order quantity",
+    recount_desc: "Clear status to recount",
 
-    // LINE message headers
+    // LINE & WhatsApp Exports
     line_order_summary: "Order Summary",
     line_date: "Date",
-    line_out_of_stock_section: "🔴 Out of Stock (To Order):",
+    line_out_of_stock_section: "🔴 Out of Stock (Order):",
     line_low_stock_section: "🟡 Low Stock:",
     line_no_items: "(No out-of-stock or low-stock items)",
-    line_estimated_total: "💰 Estimated Total:",
-    line_grand_total: "💵 Grand Estimated Total Across Suppliers:",
+    line_estimated_total: "💰 Estimated Order Total:",
     line_note: "📝 Note:",
+    line_grand_total: "💵 Grand Total Across All Suppliers:",
+    all_stock_normal: "(All stock levels normal. No items need ordering)",
+    line_preview_title: "Order Message Preview",
+    copy_message: "Copy Message",
+    open_line_app: "Open LINE App",
+    all_suppliers_summary_title: "All Suppliers Summary (By Company)",
+    line_preview_subtitle: "Formatted message preview for LINE",
 
-    // Master
+    // Master Data
     master_title: "Master Data Management",
+    master_subtitle_summary: "Master Data ({suppliers} Suppliers / {items} Items)",
+    refresh_data: "Refresh Data",
+    tab_items: "Items",
+    tab_suppliers: "Suppliers",
+    search_items_placeholder: "Search item name, notes...",
+    search_suppliers_placeholder: "Search supplier name, phone...",
     add_item: "Add Item",
     add_supplier: "Add Supplier",
-    rank_label: "Rank",
+    all_suppliers_filter: "All ({count})",
+    empty_items_title: "No Items Found",
+    empty_items_desc: "No items match your search or filter. Tap \"Add Item\" above to get started.",
+    rank_tooltip: "Tap to set walking order position",
+    move_up: "Move Up",
+    move_down: "Move Down",
+    edit_item_tooltip: "Edit item details",
+    delete_item_tooltip: "Delete item",
+    counting_unit_label: "Unit:",
+    price_colon_label: "Price:",
+    reorder_modal_title: "Reorder Walking Sequence",
+    item_colon_label: "Item:",
+    current_rank_label: "Current rank: #{rank} of {total} items",
+    target_rank_label: "Move to position:",
+    rank_first: "First position (#1)",
+    rank_last: "Last position (#{total})",
+    moving_rank: "Moving...",
+    save_rank: "Save Position",
+    delete_item_confirm_title: "Delete Item?",
+    delete_item_confirm_desc: "Are you sure you want to delete item \"{name}\" from the system?",
+    error_delete_item: "Failed to delete item",
+    error_swap_item_order: "Error swapping item order",
+    error_set_item_position: "Error changing item position",
 
-    // History
-    history_title: "Stock Count History",
-    archive_and_reset: "Weekly Reset",
+    // Item Modal
+    add_item_title: "Add New Item",
+    edit_item_title: "Edit Item",
+    add_item_desc: "Enter item details for inventory counting",
+    edit_item_desc: "Update item name, price, and counting unit",
+    item_name_label: "Item Name",
+    item_name_placeholder: "e.g. Singha Water 600ml, Tom Yum Noodles",
+    supplier_distributor_label: "Supplier / Distributor",
+    select_supplier_placeholder: "-- Select Supplier --",
+    unit_price_thb_label: "Unit Price (฿)",
+    counting_unit_field_label: "Counting Unit",
+    counting_unit_placeholder: "e.g. pcs, carton, bag",
+    quick_units_hint: "Suggested quick-tap units:",
+    item_note_field_label: "Item Notes (Optional)",
+    item_note_placeholder: "e.g. Storage location, barcode, special terms",
+    val_item_name_required: "Please enter an item name",
+    val_supplier_required: "Please select a supplier",
+    val_unit_price_positive: "Unit price must be 0 or greater",
+    error_save_item: "An error occurred while saving item",
 
-    // Auth
-    pin_login_title: "Dino Stock Checker",
-    pin_login_desc: "Inventory & Order System",
-    enter_pin: "Enter 4-digit PIN",
-    pin_error: "Invalid PIN, please try again",
+    // Supplier List & Modal
+    empty_suppliers_title: "No Suppliers Found",
+    empty_suppliers_desc: "Tap \"Add Supplier\" above to create supplier records and define minimum order thresholds.",
+    items_count_badge: "{count} Items",
+    min_order_badge: "Min ฿{amount}",
+    phone_label: "Phone:",
+    edit_supplier_btn: "Edit Supplier",
+    delete_supplier_tooltip: "Delete Supplier",
+    delete_supplier_confirm_title: "Delete Supplier?",
+    delete_supplier_confirm_desc: "Are you sure you want to delete supplier \"{name}\"?",
+    delete_supplier_cascade_warning: "⚠️ Warning: This supplier has {count} items linked. Deleting this supplier will automatically delete all linked items (Cascade).",
+    error_delete_supplier: "Failed to delete supplier",
+    add_supplier_title: "Add New Supplier",
+    edit_supplier_title: "Edit Supplier",
+    add_supplier_desc: "Create supplier record to link with items and orders",
+    edit_supplier_desc: "Update contact details and minimum order threshold",
+    supplier_name_label: "Company / Supplier Name",
+    supplier_name_placeholder: "e.g. Makro, Boon Rawd Brewery",
+    min_order_amount_label: "Minimum Order Amount (THB)",
+    min_order_amount_hint: "Used for real-time progress bar calculation and minimum order threshold alerts",
+    weekly_order_days_label: "Weekly Order Days",
+    order_days_selected_count: "{count} days selected",
+    order_days_not_specified: "Not specified",
+    order_days_hint: "Tap order days so the system can alert you when an order cycle is approaching or due today",
+    contact_phone_label: "Contact Phone / Sales (Optional)",
+    contact_phone_placeholder: "e.g. 02-123-4567, 081-999-8888",
+    supplier_note_label: "Notes / Order Conditions (Optional)",
+    supplier_note_placeholder: "e.g. Delivery on Wednesdays, cutoff 15:00",
+    val_supplier_name_required: "Please enter a supplier name",
+    val_min_order_positive: "Minimum order amount must be 0 or greater",
+    error_save_supplier: "An error occurred while saving supplier",
+
+    // Inline Price Editor
+    val_price_positive: "Price must be a valid non-negative number",
+    error_save_price: "An error occurred while saving price",
+    save_price_btn: "Save Price",
+    edit_price_tooltip: "Tap to edit price",
+
+    // Schedule Alerts & Badges
+    schedule_alert_today_title: "🚨 Order day today!",
+    schedule_alert_tomorrow_title: "⏰ Notice: Order day tomorrow!",
+    schedule_alert_today_desc: "Count stock and submit orders to sales reps before cutoff time",
+    schedule_alert_tomorrow_desc: "Prepare stock count in advance for tomorrow's supplier orders",
+    dismiss_alert: "Dismiss alert",
+    order_today_badge: "Order Today:",
+    order_tomorrow_badge: "Order Tomorrow:",
+    order_cycle_today: "Order cycle today!",
+    order_cycle_tomorrow: "Order cycle tomorrow!",
+    today: "Today",
+    tomorrow: "Tomorrow",
+
+    // History View & Exports
+    history_page_title: "Stock Count History",
+    history_subtitle_count: "{count} Weekly Snapshot Archives",
+    history_search_placeholder: "Search date, memo, or item name...",
+    history_empty_title: "No stock count history yet",
+    history_search_empty_title: "No history records match your search",
+    history_empty_desc: "When you tap \"Reset\" on the Stock Check page, that cycle's summary is archived here automatically.",
+    go_to_stock_count_btn: "Go to Stock Check",
+    delete_snapshot_tooltip: "Delete this snapshot",
+    total_order_amount_col: "Total Order Amount",
+    copy_line_summary_btn: "Copy Summary (LINE)",
+    download_csv_tooltip: "Download CSV file",
+    view_items_btn: "View Items",
+    collapse_items_btn: "Collapse",
+    all_suppliers_tab: "All Suppliers ({count})",
+    confirm_delete_snapshot: "Are you sure you want to delete this historical snapshot? This action cannot be undone.",
+    toast_snapshot_deleted: "Historical snapshot deleted successfully",
+    error_delete_snapshot: "Error deleting snapshot",
+    toast_csv_exported: "CSV file downloaded successfully",
+    error_export_csv: "Error exporting CSV file",
+    toast_copied_line_summary: "Order summary copied to clipboard",
+    error_copy_failed: "Failed to copy to clipboard",
+    snapshot_line_header: "📦 Historical Stock Snapshot",
+    snapshot_line_date: "📅 Date:",
+    snapshot_line_note: "📝 Memo:",
+    snapshot_line_out_of_stock: "🔴 Out of Stock Items:",
+    snapshot_line_order_qty: "Order",
+    snapshot_line_low_stock: "🟡 Low Stock Items:",
+    snapshot_line_remain_qty: "Remain",
+    snapshot_line_no_items: "(No out-of-stock or low-stock items)",
+    snapshot_line_grand_total: "💰 Grand Total:",
+    csv_header_no: "No.",
+    csv_header_supplier: "Supplier",
+    csv_header_item_name: "Item Name",
+    csv_header_unit: "Unit",
+    csv_header_unit_price: "Unit Price (THB)",
+    csv_header_status: "Status",
+    csv_header_remain: "Remaining",
+    csv_header_order_qty: "Order Qty",
+    csv_header_line_total: "Line Total (THB)",
+
+    // PIN Settings Modal
+    pin_modal_title: "Change Security PIN",
+    pin_modal_subtitle: "For system authentication",
+    pin_change_success: "Security PIN changed successfully!",
+    hide_digits: "Hide Digits",
+    show_digits: "Show Digits",
+    current_pin_label: "Current PIN",
+    current_pin_placeholder: "Enter current PIN (default: 1234)",
+    new_pin_label: "New PIN (4 Digits)",
+    new_pin_placeholder: "Enter 4 numeric digits",
+    confirm_pin_label: "Confirm New PIN",
+    confirm_pin_placeholder: "Re-enter new 4 digits",
+    save_new_pin_btn: "Save New PIN",
+    val_current_pin_required: "Please specify current PIN",
+    val_new_pin_format: "New PIN must be exactly 4 numeric digits",
+    val_pin_mismatch: "New PIN and confirmation do not match",
+    val_pin_must_differ: "New PIN cannot be the same as current PIN",
+    error_change_pin: "Failed to change PIN",
+    error_connection: "Connection error, please try again",
   },
 };
 
-const LanguageContext = createContext<LanguageContextType>({
-  lang: "th",
-  setLang: () => {},
-  toggleLang: () => {},
-  t: (key: string) => key,
-});
-
-const STORAGE_KEY = "dino_stock_lang";
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>("th");
 
-  // Load initial language from localStorage on client
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === "th" || saved === "en") {
-        setLangState(saved);
-        document.documentElement.lang = saved;
+      const savedLang = localStorage.getItem("dino_stock_lang") as Language | null;
+      if (savedLang === "th" || savedLang === "en") {
+        setLangState(savedLang);
+        document.documentElement.lang = savedLang;
       }
     } catch {
-      // LocalStorage not available or SSR
+      // localStorage unavailable (e.g. SSR or incognito quota)
     }
   }, []);
 
   const setLang = useCallback((newLang: Language) => {
     setLangState(newLang);
     try {
-      localStorage.setItem(STORAGE_KEY, newLang);
+      localStorage.setItem("dino_stock_lang", newLang);
       document.documentElement.lang = newLang;
     } catch {
-      // Ignore
+      // ignore
     }
   }, []);
 
   const toggleLang = useCallback(() => {
-    setLangState((prev) => {
-      const next = prev === "th" ? "en" : "th";
-      try {
-        localStorage.setItem(STORAGE_KEY, next);
-        document.documentElement.lang = next;
-      } catch {
-        // Ignore
-      }
-      return next;
-    });
-  }, []);
+    setLang(lang === "th" ? "en" : "th");
+  }, [lang, setLang]);
 
   const t = useCallback(
     (key: string): string => {
-      return translations[lang]?.[key] || translations["th"]?.[key] || key;
+      const dict = translations[lang];
+      if (dict && dict[key] !== undefined) {
+        return dict[key];
+      }
+      // Fallback to Thai
+      const fallback = translations.th[key];
+      if (fallback !== undefined) {
+        return fallback;
+      }
+      return key;
     },
     [lang]
   );
@@ -316,6 +739,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useLanguage() {
-  return useContext(LanguageContext);
+export function useLanguage(): LanguageContextType {
+  const context = useContext(LanguageContext);
+  if (!context) {
+    throw new Error("useLanguage must be used within a LanguageProvider");
+  }
+  return context;
 }
