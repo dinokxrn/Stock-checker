@@ -9,10 +9,17 @@ export default async function DashboardPage() {
   const suppliers = await prisma.supplier.findMany({
     include: {
       items: {
-        orderBy: [{ status: "desc" }, { name: "asc" }],
+        orderBy: [
+          { status: "desc" },
+          { sortOrder: "asc" },
+          { name: "asc" },
+        ],
       },
     },
-    orderBy: { name: "asc" },
+    orderBy: [
+      { sortOrder: "asc" },
+      { name: "asc" },
+    ],
   });
 
   // Ensure serialization into pure dashboard props

@@ -11,7 +11,10 @@ export default async function MasterDataPage() {
           select: { items: true },
         },
       },
-      orderBy: { name: "asc" },
+      orderBy: [
+        { sortOrder: "asc" },
+        { name: "asc" },
+      ],
     }),
     prisma.item.findMany({
       include: {

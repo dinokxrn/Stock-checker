@@ -12,7 +12,10 @@ export default async function HomePage() {
         minOrderAmount: true,
         orderDays: true,
       },
-      orderBy: { name: "asc" },
+      orderBy: [
+        { sortOrder: "asc" },
+        { name: "asc" },
+      ],
     }),
     prisma.item.findMany({
       include: {

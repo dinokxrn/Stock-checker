@@ -40,7 +40,10 @@ export async function getSuppliers() {
           select: { items: true },
         },
       },
-      orderBy: { name: "asc" },
+      orderBy: [
+        { sortOrder: "asc" },
+        { name: "asc" },
+      ],
     });
     return { success: true, data: suppliers };
   } catch (error) {
