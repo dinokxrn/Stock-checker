@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X, Plus, Package, Building2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export type MasterTab = "items" | "suppliers";
 
@@ -29,6 +30,8 @@ export function MasterFilterBar({
   suppliers,
   onAddNew,
 }: MasterFilterBarProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-3">
       {/* Top Segmented Controls: Items vs Suppliers */}
@@ -43,7 +46,7 @@ export function MasterFilterBar({
           }`}
         >
           <Package className="w-4 h-4" />
-          <span>รายการสินค้า</span>
+          <span>{t("tab_items")}</span>
           <span
             className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
               activeTab === "items"
@@ -65,7 +68,7 @@ export function MasterFilterBar({
           }`}
         >
           <Building2 className="w-4 h-4" />
-          <span>บริษัทคู่ค้า</span>
+          <span>{t("tab_suppliers")}</span>
           <span
             className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
               activeTab === "suppliers"
@@ -88,8 +91,8 @@ export function MasterFilterBar({
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={
               activeTab === "items"
-                ? "ค้นหาชื่อสินค้า, หมายเหตุ..."
-                : "ค้นหาชื่อคู่ค้า, เบอร์โทร..."
+                ? t("search_items_placeholder")
+                : t("search_suppliers_placeholder")
             }
             className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]"
           />
@@ -111,7 +114,7 @@ export function MasterFilterBar({
           className="min-h-[48px] px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-bold text-sm flex items-center gap-1.5 shadow-sm transition-all shrink-0 touch-manipulation"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>{activeTab === "items" ? "เพิ่มสินค้า" : "เพิ่มคู่ค้า"}</span>
+          <span>{activeTab === "items" ? t("add_item") : t("add_supplier")}</span>
         </button>
       </div>
 
@@ -127,7 +130,7 @@ export function MasterFilterBar({
                 : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
             }`}
           >
-            ทั้งหมด ({itemCount})
+            {t("all_suppliers_filter").replace("{count}", String(itemCount))}
           </button>
 
           {suppliers.map((s) => {

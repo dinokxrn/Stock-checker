@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { createItem, updateItem, ItemInput } from "@/actions/master-data";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { X, Package, Building2, FileText, Loader2, Sparkles } from "lucide-react";
 
-const COMMON_UNITS = ["ชิ้น", "ลัง", "แพ็ค", "ขวด", "ถุง", "ถาด", "กล่อง", "ซอง", "กระป๋อง"];
+const TH_COMMON_UNITS = ["ชิ้น", "ลัง", "แพ็ค", "ขวด", "ถุง", "ถาด", "กล่อง", "ซอง", "กระป๋อง"];
+const EN_COMMON_UNITS = ["pcs", "pack", "box", "bottle", "bag", "case", "can", "tray", "carton"];
 
 interface ItemModalProps {
   isOpen: boolean;
@@ -30,11 +32,15 @@ export function ItemModal({
   defaultSupplierId,
   item,
 }: ItemModalProps) {
+  const { t, lang } = useLanguage();
   const isEditing = Boolean(item);
+  const commonUnits = lang === "en" ? EN_COMMON_UNITS : TH_COMMON_UNITS;
+  const defaultUnit = lang === "en" ? "pcs" : "ชิ้น";
+
   const [name, setName] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [unitPrice, setUnitPrice] = useState("0");
-  const [unit, setUnit] = useState("ชิ้น");
+  const [unit, setUnit] = useState(defaultUnit);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,34 +50,34 @@ export function ItemModal({
       setName(item.name);
       setSupplierId(item.supplierId);
       setUnitPrice(item.unitPrice.toString());
-      setUnit(item.unit || "ชิ้น");
+      setUnit(item.unit || defaultUnit);
       setNote(item.note || "");
     } else {
       setName("");
       setSupplierId(defaultSupplierId || (suppliers[0]?.id ?? ""));
       setUnitPrice("0");
-      setUnit("ชิ้น");
+      setUnit(defaultUnit);
       setNote("");
     }
     setError(null);
-  }, [item, defaultSupplierId, suppliers, isOpen]);
+  }, [item, defaultSupplierId, suppliers, isOpen, defaultUnit]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError("กรุณากรอกชื่อสินค้า");
+      setError(t("val_item_name_required"));
       return;
     }
     if (!supplierId) {
-      setError("กรุณาเลือกบริษัทคู่ค้า");
+      setError(t("val_supplier_required"));
       return;
     }
 
     const price = parseFloat(unitPrice);
     if (isNaN(price) || price < 0) {
-      setError("ราคาต่อหน่วยต้องเป็นตัวเลข 0 หรือมากกว่า");
+      setError(t("val_unit_price_positive"));
       return;
     }
 
@@ -82,7 +88,7 @@ export function ItemModal({
       name: name.trim(),
       supplierId,
       unitPrice: price,
-      unit: unit.trim() || "ชิ้น",
+      unit: unit.trim() || defaultUnit,
       note: note.trim() || null,
     };
 
@@ -99,7 +105,7 @@ export function ItemModal({
       onSuccess();
       onClose();
     } else {
-      setError(result.error || "เกิดข้อผิดพลาดในการบันทึก");
+      setError(result.error || t("error_save_item"));
     }
   };
 
@@ -117,12 +123,10 @@ export function ItemModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800">
-                {isEditing ? "แก้ไขรายการสินค้า" : "เพิ่มสินค้าใหม่"}
+                {isEditing ? t("edit_item_title") : t("add_item_title")}
               </h2>
               <p className="text-xs text-slate-500">
-                {isEditing
-                  ? "ปรับปรุงข้อมูลสินค้า ราคา และหน่วยนับ"
-                  : "กรอกข้อมูลสินค้าเพื่อนำไปตรวจนับในสต็อก"}
+                {isEditing ? t("edit_item_desc") : t("add_item_desc")}
               </p>
             </div>
           </div>
@@ -130,7 +134,7 @@ export function ItemModal({
             type="button"
             onClick={onClose}
             className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors touch-manipulation"
-            aria-label="ปิด"
+            aria-label={t("close")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -148,7 +152,7 @@ export function ItemModal({
           {/* Item Name */}
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-              <span>ชื่อสินค้า</span>
+              <span>{t("item_name_label")}</span>
               <span className="text-rose-500">*</span>
             </label>
             <input
@@ -156,7 +160,7 @@ export function ItemModal({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="เช่น น้ำดื่มสิงห์ 600ml, มาม่าต้มยำกุ้ง"
+              placeholder={t("item_name_placeholder")}
               className="w-full px-3.5 py-3 text-base text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]"
             />
           </div>
@@ -165,7 +169,7 @@ export function ItemModal({
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-slate-500" />
-              <span>บริษัทคู่ค้า / ผู้จัดจำหน่าย</span>
+              <span>{t("supplier_distributor_label")}</span>
               <span className="text-rose-500">*</span>
             </label>
             <select
@@ -175,7 +179,7 @@ export function ItemModal({
               className="w-full px-3.5 py-3 text-base text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]"
             >
               <option value="" disabled>
-                -- เลือกคู่ค้า --
+                {t("select_supplier_placeholder")}
               </option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -190,7 +194,7 @@ export function ItemModal({
             {/* Unit Price */}
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                <span>ราคาต่อหน่วย (฿)</span>
+                <span>{t("unit_price_thb_label")}</span>
                 <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
@@ -214,7 +218,7 @@ export function ItemModal({
             {/* Unit */}
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                <span>หน่วยนับสินค้า</span>
+                <span>{t("counting_unit_field_label")}</span>
                 <span className="text-rose-500">*</span>
               </label>
               <input
@@ -222,7 +226,7 @@ export function ItemModal({
                 required
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                placeholder="เช่น ชิ้น, ลัง, ถุง"
+                placeholder={t("counting_unit_placeholder")}
                 className="w-full px-3.5 py-3 text-base text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]"
               />
             </div>
@@ -232,10 +236,10 @@ export function ItemModal({
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              หน่วยนับแนะนำแตะด่วน:
+              {t("quick_units_hint")}
             </span>
             <div className="flex flex-wrap gap-1.5">
-              {COMMON_UNITS.map((u) => (
+              {commonUnits.map((u) => (
                 <button
                   key={u}
                   type="button"
@@ -256,13 +260,13 @@ export function ItemModal({
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
               <FileText className="w-4 h-4 text-slate-500" />
-              <span>หมายเหตุสินค้า (ไม่บังคับ)</span>
+              <span>{t("item_note_field_label")}</span>
             </label>
             <textarea
               rows={2}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="เช่น ตำแหน่งจัดเก็บ, รหัสบาร์โค้ด, เงื่อนไขพิเศษ"
+              placeholder={t("item_note_placeholder")}
               className="w-full px-3.5 py-2.5 text-base text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
@@ -275,7 +279,7 @@ export function ItemModal({
               disabled={isSubmitting}
               className="flex-1 min-h-[48px] px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-100 active:bg-slate-200 transition-colors touch-manipulation"
             >
-              ยกเลิก
+              {t("cancel")}
             </button>
             <button
               type="submit"
@@ -285,10 +289,10 @@ export function ItemModal({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>กำลังบันทึก...</span>
+                  <span>{t("saving")}</span>
                 </>
               ) : (
-                <span>{isEditing ? "บันทึกการแก้ไข" : "เพิ่มสินค้า"}</span>
+                <span>{isEditing ? t("save_changes") : t("add_item")}</span>
               )}
             </button>
           </div>

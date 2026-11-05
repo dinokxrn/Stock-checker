@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { deleteSupplier } from "@/actions/master-data";
 import { getSupplierScheduleStatus } from "@/lib/order-schedule";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Building2,
   Phone,
@@ -38,6 +39,7 @@ export function SupplierList({
   onEdit,
   onRefresh,
 }: SupplierListProps) {
+  const { t, lang } = useLanguage();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteSupplier, setConfirmDeleteSupplier] = useState<SupplierItem | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export function SupplierList({
       setConfirmDeleteSupplier(null);
       onRefresh();
     } else {
-      setError(res.error || "ไม่สามารถลบข้อมูลคู่ค้าได้");
+      setError(res.error || t("error_delete_supplier"));
     }
   };
 
@@ -65,9 +67,9 @@ export function SupplierList({
         <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
           <Building2 className="w-6 h-6" />
         </div>
-        <h3 className="font-semibold text-slate-700 mb-1">ยังไม่มีข้อมูลบริษัทคู่ค้า</h3>
+        <h3 className="font-semibold text-slate-700 mb-1">{t("empty_suppliers_title")}</h3>
         <p className="text-xs text-slate-500 max-w-xs">
-          กดปุ่ม &quot;เพิ่มคู่ค้าใหม่&quot; ด้านบนเพื่อเริ่มต้นสร้างข้อมูลบริษัทและกำหนดเกณฑ์ยอดสั่งซื้อขั้นต่ำ
+          {t("empty_suppliers_desc")}
         </p>
       </div>
     );
@@ -103,10 +105,10 @@ export function SupplierList({
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <span className="inline-flex items-center gap-1 font-medium text-slate-600">
                       <Package className="w-3.5 h-3.5 text-slate-400" />
-                      {itemCount} รายการสินค้า
+                      {t("items_count_badge").replace("{count}", String(itemCount))}
                     </span>
                     {(() => {
-                      const schedule = getSupplierScheduleStatus(supplier.orderDays);
+                      const schedule = getSupplierScheduleStatus(supplier.orderDays, lang);
                       if (!schedule) return null;
                       return (
                         <span
@@ -125,11 +127,11 @@ export function SupplierList({
               <div className="flex flex-col items-end gap-1 shrink-0">
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
                   <Package className="w-3.5 h-3.5 text-slate-500" />
-                  {supplier._count?.items ?? 0} รายการ
+                  {itemCount} {t("items_unit")}
                 </span>
                 {supplier.minOrderAmount > 0 && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
-                    ขั้นต่ำ ฿{supplier.minOrderAmount.toLocaleString("th-TH")}
+                    {t("min_order_badge").replace("{amount}", supplier.minOrderAmount.toLocaleString(lang === "en" ? "en-US" : "th-TH"))}
                   </span>
                 )}
               </div>
@@ -141,7 +143,7 @@ export function SupplierList({
                 {supplier.contactPhone && (
                   <div className="flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>โทร:</span>
+                    <span>{t("phone_label")}</span>
                     <a
                       href={`tel:${supplier.contactPhone}`}
                       className="font-medium text-blue-600 hover:underline"
@@ -167,15 +169,15 @@ export function SupplierList({
                 className="flex-1 min-h-[48px] px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 active:bg-slate-200 border border-slate-200 text-slate-700 font-semibold text-sm flex items-center justify-center gap-2 transition-colors touch-manipulation"
               >
                 <Pencil className="w-4 h-4 text-slate-500" />
-                <span>แก้ไขคู่ค้า</span>
+                <span>{t("edit_supplier_btn")}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setConfirmDeleteSupplier(supplier)}
                 className="w-12 min-h-[48px] flex items-center justify-center rounded-xl bg-rose-50 hover:bg-rose-100 active:bg-rose-200 border border-rose-200 text-rose-600 transition-colors touch-manipulation"
-                title="ลบคู่ค้า"
-                aria-label={`ลบ ${supplier.name}`}
+                title={t("delete_supplier_tooltip")}
+                aria-label={`Delete ${supplier.name}`}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -194,22 +196,14 @@ export function SupplierList({
 
             <div className="text-center space-y-1.5">
               <h3 className="text-lg font-bold text-slate-800">
-                ยืนยันการลบคู่ค้า?
+                {t("delete_supplier_confirm_title")}
               </h3>
               <p className="text-sm text-slate-600">
-                คุณแน่ใจหรือไม่ว่าต้องการลบ{" "}
-                <span className="font-semibold text-slate-900">
-                  &quot;{confirmDeleteSupplier.name}&quot;
-                </span>
-                ?
+                {t("delete_supplier_confirm_desc").replace("{name}", confirmDeleteSupplier.name)}
               </p>
               {(confirmDeleteSupplier._count?.items ?? 0) > 0 && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 text-left mt-2">
-                  ⚠️ คำเตือน: คู่ค้านี้มีสินค้าผูกอยู่{" "}
-                  <span className="font-bold">
-                    {confirmDeleteSupplier._count?.items} รายการ
-                  </span>{" "}
-                  การลบคู่ค้าจะลบรายการสินค้าที่ผูกอยู่ทั้งหมดโดยอัตโนมัติ (Cascade)
+                  {t("delete_supplier_cascade_warning").replace("{count}", String(confirmDeleteSupplier._count?.items ?? 0))}
                 </div>
               )}
             </div>
@@ -221,7 +215,7 @@ export function SupplierList({
                 onClick={() => setConfirmDeleteSupplier(null)}
                 className="flex-1 min-h-[48px] px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-100 active:bg-slate-200 transition-colors touch-manipulation"
               >
-                ยกเลิก
+                {t("cancel")}
               </button>
               <button
                 type="button"
@@ -232,10 +226,10 @@ export function SupplierList({
                 {deletingId ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>กำลังลบ...</span>
+                    <span>{t("deleting")}</span>
                   </>
                 ) : (
-                  <span>ยืนยันการลบ</span>
+                  <span>{t("confirm_delete")}</span>
                 )}
               </button>
             </div>

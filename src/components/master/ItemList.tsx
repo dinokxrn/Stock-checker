@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { deleteItem } from "@/actions/master-data";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Package,
   Building2,
@@ -49,6 +50,7 @@ export function ItemList({
   onMoveItem,
   onSetItemPosition,
 }: ItemListProps) {
+  const { t, lang } = useLanguage();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<MasterItem | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export function ItemList({
       setConfirmDeleteItem(null);
       onRefresh();
     } else {
-      setError(res.error || "ไม่สามารถลบรายการสินค้าได้");
+      setError(res.error || t("error_delete_item"));
     }
   };
 
@@ -82,7 +84,7 @@ export function ItemList({
     try {
       await onMoveItem(itemId, direction);
     } catch {
-      setError("เกิดข้อผิดพลาดในการสลับลำดับสินค้า");
+      setError(t("error_swap_item_order"));
     } finally {
       setMovingItemId(null);
     }
@@ -102,7 +104,7 @@ export function ItemList({
       await onSetItemPosition(jumpItem.item.id, rank);
       setJumpItem(null);
     } catch {
-      setError("เกิดข้อผิดพลาดในการเปลี่ยนตำแหน่งสินค้า");
+      setError(t("error_set_item_position"));
     } finally {
       setIsSubmittingRank(false);
     }
@@ -114,9 +116,9 @@ export function ItemList({
         <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
           <Package className="w-6 h-6" />
         </div>
-        <h3 className="font-semibold text-slate-700 mb-1">ไม่พบรายการสินค้า</h3>
+        <h3 className="font-semibold text-slate-700 mb-1">{t("empty_items_title")}</h3>
         <p className="text-xs text-slate-500 max-w-xs">
-          ยังไม่มีสินค้าที่ตรงกับเงื่อนไขการค้นหาหรือตัวกรองที่เลือก กดปุ่ม &quot;เพิ่มสินค้าใหม่&quot; เพื่อเริ่มต้น
+          {t("empty_items_desc")}
         </p>
       </div>
     );
@@ -133,7 +135,7 @@ export function ItemList({
             onClick={() => setError(null)}
             className="text-xs font-bold text-rose-600 underline"
           >
-            ปิด
+            {t("close")}
           </button>
         </div>
       )}
@@ -158,7 +160,7 @@ export function ItemList({
                 <button
                   type="button"
                   onClick={() => handleOpenJumpModal(item, itemRank)}
-                  title="แตะเพื่อระบุลำดับการเดินนับ"
+                  title={t("rank_tooltip")}
                   className="mt-0.5 px-2 py-1 rounded-xl bg-slate-100 hover:bg-blue-100 hover:text-blue-800 active:scale-95 text-slate-700 text-xs font-black flex items-center gap-0.5 transition-all border border-slate-200/80 shadow-2xs shrink-0 touch-manipulation"
                 >
                   <Hash className="w-3 h-3 text-slate-400" />
@@ -187,8 +189,8 @@ export function ItemList({
                     onClick={() => handleMove(item.id, "up")}
                     disabled={isFirst || Boolean(movingItemId)}
                     className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-600 hover:text-blue-600 hover:bg-white active:bg-blue-50 disabled:opacity-25 disabled:pointer-events-none transition-all touch-manipulation"
-                    title="เลื่อนขึ้นด้านบน"
-                    aria-label={`เลื่อน ${item.name} ขึ้น`}
+                    title={t("move_up")}
+                    aria-label={`Move ${item.name} up`}
                   >
                     <ArrowUp className="w-4 h-4" />
                   </button>
@@ -198,8 +200,8 @@ export function ItemList({
                     onClick={() => handleMove(item.id, "down")}
                     disabled={isLast || Boolean(movingItemId)}
                     className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-600 hover:text-blue-600 hover:bg-white active:bg-blue-50 disabled:opacity-25 disabled:pointer-events-none transition-all touch-manipulation"
-                    title="เลื่อนลงด้านล่าง"
-                    aria-label={`เลื่อน ${item.name} ลง`}
+                    title={t("move_down")}
+                    aria-label={`Move ${item.name} down`}
                   >
                     <ArrowDown className="w-4 h-4" />
                   </button>
@@ -209,8 +211,8 @@ export function ItemList({
                   type="button"
                   onClick={() => onEdit(item)}
                   className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors touch-manipulation"
-                  title="แก้ไขรายละเอียดสินค้า"
-                  aria-label={`แก้ไข ${item.name}`}
+                  title={t("edit_item_tooltip")}
+                  aria-label={`Edit ${item.name}`}
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
@@ -218,8 +220,8 @@ export function ItemList({
                   type="button"
                   onClick={() => setConfirmDeleteItem(item)}
                   className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:bg-rose-100 transition-colors touch-manipulation"
-                  title="ลบสินค้า"
-                  aria-label={`ลบ ${item.name}`}
+                  title={t("delete_item_tooltip")}
+                  aria-label={`Delete ${item.name}`}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -229,13 +231,13 @@ export function ItemList({
             {/* Middle row: Unit, Price and Details */}
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 text-xs text-slate-600">
-                <span className="text-[11px] font-medium text-slate-400">หน่วยนับ:</span>
+                <span className="text-[11px] font-medium text-slate-400">{t("counting_unit_label")}</span>
                 <span className="px-2.5 py-0.5 rounded-md bg-slate-100 font-semibold text-slate-700">
                   {item.unit}
                 </span>
-                <span className="text-[11px] font-medium text-slate-400 ml-1">ราคา:</span>
+                <span className="text-[11px] font-medium text-slate-400 ml-1">{t("price_colon_label")}</span>
                 <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 font-bold text-emerald-700 border border-emerald-200">
-                  ฿{item.unitPrice.toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  ฿{item.unitPrice.toLocaleString(lang === "en" ? "en-US" : "th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                 </span>
               </div>
 
@@ -259,18 +261,18 @@ export function ItemList({
             </div>
 
             <div className="text-center space-y-1">
-              <h3 className="text-lg font-bold text-slate-800">ย้ายลำดับการเดินนับ</h3>
+              <h3 className="text-lg font-bold text-slate-800">{t("reorder_modal_title")}</h3>
               <p className="text-xs text-slate-500">
-                สินค้า: <strong className="text-slate-800">{jumpItem.item.name}</strong>
+                {t("item_colon_label")} <strong className="text-slate-800">{jumpItem.item.name}</strong>
               </p>
               <div className="text-xs text-slate-400">
-                ลำดับปัจจุบัน: <strong className="text-blue-600 font-bold">#{jumpItem.currentRank}</strong> จาก {items.length} รายการ
+                {t("current_rank_label").replace("{rank}", String(jumpItem.currentRank)).replace("{total}", String(items.length))}
               </div>
             </div>
 
             <div className="space-y-3 pt-2">
               <label className="block text-xs font-bold text-slate-700 text-center">
-                ต้องการย้ายไปที่ลำดับ:
+                {t("target_rank_label")}
               </label>
 
               <div className="flex items-center justify-center gap-3">
@@ -308,14 +310,14 @@ export function ItemList({
                   onClick={() => setTargetRankInput(1)}
                   className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold"
                 >
-                  อันดับแรกสุด (#1)
+                  {t("rank_first")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setTargetRankInput(items.length)}
                   className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold"
                 >
-                  อันดับท้ายสุด (#{items.length})
+                  {t("rank_last").replace("{total}", String(items.length))}
                 </button>
               </div>
             </div>
@@ -327,7 +329,7 @@ export function ItemList({
                 onClick={() => setJumpItem(null)}
                 className="flex-1 min-h-[46px] px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-100 active:bg-slate-200 transition-colors touch-manipulation"
               >
-                ยกเลิก
+                {t("cancel")}
               </button>
               <button
                 type="button"
@@ -338,10 +340,10 @@ export function ItemList({
                 {isSubmittingRank ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>กำลังย้าย...</span>
+                    <span>{t("moving_rank")}</span>
                   </>
                 ) : (
-                  <span>บันทึกลำดับ</span>
+                  <span>{t("save_rank")}</span>
                 )}
               </button>
             </div>
@@ -359,14 +361,10 @@ export function ItemList({
 
             <div className="text-center space-y-1.5">
               <h3 className="text-lg font-bold text-slate-800">
-                ยืนยันการลบสินค้า?
+                {t("delete_item_confirm_title")}
               </h3>
               <p className="text-sm text-slate-600">
-                คุณต้องการลบรายการสินค้า{" "}
-                <span className="font-semibold text-slate-900">
-                  &quot;{confirmDeleteItem.name}&quot;
-                </span>{" "}
-                ออกจากระบบใช่หรือไม่?
+                {t("delete_item_confirm_desc").replace("{name}", confirmDeleteItem.name)}
               </p>
             </div>
 
@@ -377,7 +375,7 @@ export function ItemList({
                 onClick={() => setConfirmDeleteItem(null)}
                 className="flex-1 min-h-[48px] px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-100 active:bg-slate-200 transition-colors touch-manipulation"
               >
-                ยกเลิก
+                {t("cancel")}
               </button>
               <button
                 type="button"
@@ -388,10 +386,10 @@ export function ItemList({
                 {deletingId ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>กำลังลบ...</span>
+                    <span>{t("deleting")}</span>
                   </>
                 ) : (
-                  <span>ยืนยันการลบ</span>
+                  <span>{t("confirm_delete")}</span>
                 )}
               </button>
             </div>

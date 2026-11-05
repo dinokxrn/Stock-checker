@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { updateItemPrice } from "@/actions/master-data";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Check, X, Pencil, Loader2 } from "lucide-react";
 
 interface InlinePriceEditorProps {
@@ -17,6 +18,7 @@ export function InlinePriceEditor({
   unit,
   onPriceUpdated,
 }: InlinePriceEditorProps) {
+  const { t, lang } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
   const [price, setPrice] = useState<string>(initialPrice.toString());
   const [currentDisplayPrice, setCurrentDisplayPrice] = useState<number>(initialPrice);
@@ -54,7 +56,7 @@ export function InlinePriceEditor({
     const numPrice = parseFloat(price);
 
     if (isNaN(numPrice) || numPrice < 0) {
-      setError("ราคาต้องเป็นตัวเลขที่ถูกต้องและไม่ติดลบ");
+      setError(lang === "en" ? "Price must be a valid non-negative number" : "ราคาต้องเป็นตัวเลขที่ถูกต้องและไม่ติดลบ");
       return;
     }
 
@@ -74,7 +76,7 @@ export function InlinePriceEditor({
       // Rollback on failure
       setCurrentDisplayPrice(previousPrice);
       setPrice(previousPrice.toString());
-      setError(res.error || "เกิดข้อผิดพลาดในการบันทึก");
+      setError(res.error || (lang === "en" ? "Error saving price" : "เกิดข้อผิดพลาดในการบันทึก"));
     }
   };
 
@@ -117,8 +119,8 @@ export function InlinePriceEditor({
           onClick={handleSave}
           disabled={isSaving}
           className="w-11 h-11 flex items-center justify-center rounded-lg bg-emerald-600 active:bg-emerald-700 text-white shadow hover:bg-emerald-500 transition-colors touch-manipulation"
-          title="บันทึกราคา"
-          aria-label="บันทึกราคา"
+          title={t("save")}
+          aria-label={t("save")}
         >
           {isSaving ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -133,8 +135,8 @@ export function InlinePriceEditor({
           onClick={handleCancel}
           disabled={isSaving}
           className="w-11 h-11 flex items-center justify-center rounded-lg bg-slate-200 active:bg-slate-300 text-slate-600 hover:bg-slate-300 transition-colors touch-manipulation"
-          title="ยกเลิก"
-          aria-label="ยกเลิก"
+          title={t("cancel")}
+          aria-label={t("cancel")}
         >
           <X className="w-5 h-5" />
         </button>
@@ -155,13 +157,13 @@ export function InlinePriceEditor({
         onClick={handleStartEdit}
         disabled={isSaving}
         className="group inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 active:bg-blue-100 border border-slate-200 hover:border-blue-300 transition-all text-left touch-manipulation min-h-[40px]"
-        title="แตะเพื่อแก้ไขราคา"
+        title={lang === "en" ? "Tap to edit price" : "แตะเพื่อแก้ไขราคา"}
       >
         {isSaving ? (
           <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
         ) : (
           <span className="text-base font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-            ฿{currentDisplayPrice.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ฿{currentDisplayPrice.toLocaleString(lang === "en" ? "en-US" : "th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         )}
         <span className="text-xs text-slate-500 font-medium">/{unit}</span>

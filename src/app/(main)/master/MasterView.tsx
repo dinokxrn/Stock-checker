@@ -8,6 +8,7 @@ import { SupplierList, SupplierItem } from "@/components/master/SupplierList";
 import { SupplierModal } from "@/components/master/SupplierModal";
 import { ItemModal } from "@/components/master/ItemModal";
 import { swapItemOrder, setItemSortPosition } from "@/actions/master-data";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { RefreshCw, Database } from "lucide-react";
 
 interface MasterViewProps {
@@ -16,6 +17,7 @@ interface MasterViewProps {
 }
 
 export function MasterView({ initialSuppliers, initialItems }: MasterViewProps) {
+  const { t } = useLanguage();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -150,10 +152,12 @@ export function MasterView({ initialSuppliers, initialItems }: MasterViewProps) 
           </div>
           <div>
             <h1 className="text-base font-bold text-slate-800 tracking-tight leading-snug">
-              จัดการข้อมูลหลัก
+              {t("master_title")}
             </h1>
             <p className="text-xs text-slate-500">
-              Master Data (คู่ค้า {initialSuppliers.length} บริษัท / สินค้า {initialItems.length} รายการ)
+              {t("master_subtitle_summary")
+                .replace("{suppliers}", String(initialSuppliers.length))
+                .replace("{items}", String(initialItems.length))}
             </p>
           </div>
         </div>
@@ -163,8 +167,8 @@ export function MasterView({ initialSuppliers, initialItems }: MasterViewProps) 
           onClick={handleRefresh}
           disabled={isPending}
           className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 active:bg-slate-200 transition-colors touch-manipulation"
-          title="รีเฟรชข้อมูล"
-          aria-label="รีเฟรชข้อมูล"
+          title={t("refresh_data")}
+          aria-label={t("refresh_data")}
         >
           <RefreshCw
             className={`w-4 h-4 ${isPending ? "animate-spin text-blue-600" : ""}`}

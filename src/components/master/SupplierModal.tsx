@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createSupplier, updateSupplier, SupplierInput } from "@/actions/master-data";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { X, Building2, Phone, FileText, Banknote, Loader2, Calendar } from "lucide-react";
 
 interface SupplierModalProps {
@@ -18,7 +19,7 @@ interface SupplierModalProps {
   } | null;
 }
 
-const ORDER_DAYS = [
+const TH_ORDER_DAYS = [
   { num: 1, label: "จันทร์", short: "จ." },
   { num: 2, label: "อังคาร", short: "อ." },
   { num: 3, label: "พุธ", short: "พ." },
@@ -28,12 +29,24 @@ const ORDER_DAYS = [
   { num: 0, label: "อาทิตย์", short: "อา." },
 ];
 
+const EN_ORDER_DAYS = [
+  { num: 1, label: "Monday", short: "Mon" },
+  { num: 2, label: "Tuesday", short: "Tue" },
+  { num: 3, label: "Wednesday", short: "Wed" },
+  { num: 4, label: "Thursday", short: "Thu" },
+  { num: 5, label: "Friday", short: "Fri" },
+  { num: 6, label: "Saturday", short: "Sat" },
+  { num: 0, label: "Sunday", short: "Sun" },
+];
+
 export function SupplierModal({
   isOpen,
   onClose,
   onSuccess,
   supplier,
 }: SupplierModalProps) {
+  const { t, lang } = useLanguage();
+  const orderDaysList = lang === "en" ? EN_ORDER_DAYS : TH_ORDER_DAYS;
   const isEditing = Boolean(supplier);
   const [name, setName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -79,13 +92,13 @@ export function SupplierModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError("กรุณากรอกชื่อบริษัทคู่ค้า");
+      setError(t("val_supplier_name_required"));
       return;
     }
 
     const minAmount = parseFloat(minOrderAmount);
     if (isNaN(minAmount) || minAmount < 0) {
-      setError("ยอดสั่งซื้อขั้นต่ำต้องเป็นตัวเลข 0 หรือมากกว่า");
+      setError(t("val_min_order_positive"));
       return;
     }
 
@@ -113,7 +126,7 @@ export function SupplierModal({
       onSuccess();
       onClose();
     } else {
-      setError(result.error || "เกิดข้อผิดพลาดในการบันทึก");
+      setError(result.error || t("error_save_supplier"));
     }
   };
 
@@ -131,12 +144,10 @@ export function SupplierModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800">
-                {isEditing ? "แก้ไขข้อมูลคู่ค้า" : "เพิ่มบริษัทคู่ค้าใหม่"}
+                {isEditing ? t("edit_supplier_title") : t("add_supplier_title")}
               </h2>
               <p className="text-xs text-slate-500">
-                {isEditing
-                  ? "ปรับปรุงข้อมูลติดต่อและยอดขั้นต่ำ"
-                  : "กรอกข้อมูลเพื่อเชื่อมต่อกับสินค้าและออเดอร์"}
+                {isEditing ? t("edit_supplier_desc") : t("add_supplier_desc")}
               </p>
             </div>
           </div>
@@ -144,7 +155,7 @@ export function SupplierModal({
             type="button"
             onClick={onClose}
             className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors touch-manipulation"
-            aria-label="ปิด"
+            aria-label={t("close")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -162,7 +173,7 @@ export function SupplierModal({
           {/* Supplier Name */}
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-              <span>ชื่อบริษัท / ร้านคู่ค้า</span>
+              <span>{t("supplier_name_label")}</span>
               <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
@@ -171,7 +182,7 @@ export function SupplierModal({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="เช่น แม็คโคร (Makro), บุญรอดบริวเวอรี่"
+                placeholder={t("supplier_name_placeholder")}
                 className="w-full px-3.5 py-3 text-base text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]"
               />
             </div>
@@ -181,7 +192,7 @@ export function SupplierModal({
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
               <Banknote className="w-4 h-4 text-emerald-600" />
-              <span>ยอดสั่งซื้อขั้นต่ำ (บาท)</span>
+              <span>{t("min_order_amount_label")}</span>
             </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-sm">
@@ -199,7 +210,7 @@ export function SupplierModal({
               />
             </div>
             <p className="text-xs text-slate-500">
-              ใช้สำหรับคำนวณแถบความคืบหน้า (Progress Bar) และแจ้งเตือนเมื่อยอดสั่งไม่ถึงเกณฑ์
+              {t("min_order_amount_hint")}
             </p>
           </div>
 
@@ -208,14 +219,16 @@ export function SupplierModal({
             <label className="text-sm font-semibold text-slate-700 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-indigo-600" />
-                <span>วันสั่งของประจำสัปดาห์ (Order Days)</span>
+                <span>{t("weekly_order_days_label")}</span>
               </span>
               <span className="text-[11px] text-slate-400 font-normal">
-                {selectedDays.length > 0 ? `เลือก ${selectedDays.length} วัน` : "ยังไม่ได้ระบุ"}
+                {selectedDays.length > 0
+                  ? t("order_days_selected_count").replace("{count}", String(selectedDays.length))
+                  : t("order_days_not_specified")}
               </span>
             </label>
             <div className="grid grid-cols-7 gap-1.5 pt-1">
-              {ORDER_DAYS.map((day) => {
+              {orderDaysList.map((day) => {
                 const isSelected = selectedDays.includes(day.num);
                 return (
                   <button
@@ -234,7 +247,7 @@ export function SupplierModal({
               })}
             </div>
             <p className="text-xs text-slate-500">
-              แตะเลือกวันสั่งของเพื่อให้ระบบแจ้งเตือนอัตโนมัติเมื่อใกล้ถึงวันสั่งหรือถึงรอบสั่งของวันนี้
+              {t("order_days_hint")}
             </p>
           </div>
 
@@ -242,13 +255,13 @@ export function SupplierModal({
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
               <Phone className="w-4 h-4 text-slate-500" />
-              <span>เบอร์โทรศัพท์ติดต่อ / เซลส์ (ไม่บังคับ)</span>
+              <span>{t("contact_phone_label")}</span>
             </label>
             <input
               type="tel"
               value={contactPhone}
               onChange={(e) => setContactPhone(e.target.value)}
-              placeholder="เช่น 02-123-4567, 081-999-8888"
+              placeholder={t("contact_phone_placeholder")}
               className="w-full px-3.5 py-3 text-base text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]"
             />
           </div>
@@ -257,13 +270,13 @@ export function SupplierModal({
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
               <FileText className="w-4 h-4 text-slate-500" />
-              <span>หมายเหตุ / เงื่อนไขการสั่งซื้อ (ไม่บังคับ)</span>
+              <span>{t("supplier_note_label")}</span>
             </label>
             <textarea
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="เช่น ส่งของทุกวันพุธ, ตัดรอบ 15:00 น."
+              placeholder={t("supplier_note_placeholder")}
               className="w-full px-3.5 py-2.5 text-base text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
@@ -276,7 +289,7 @@ export function SupplierModal({
               disabled={isSubmitting}
               className="flex-1 min-h-[48px] px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-100 active:bg-slate-200 transition-colors touch-manipulation"
             >
-              ยกเลิก
+              {t("cancel")}
             </button>
             <button
               type="submit"
@@ -286,10 +299,10 @@ export function SupplierModal({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>กำลังบันทึก...</span>
+                  <span>{t("saving")}</span>
                 </>
               ) : (
-                <span>{isEditing ? "บันทึกการแก้ไข" : "เพิ่มคู่ค้า"}</span>
+                <span>{isEditing ? t("save_changes") : t("add_supplier")}</span>
               )}
             </button>
           </div>
