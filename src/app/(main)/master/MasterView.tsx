@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MasterFilterBar, MasterTab } from "@/components/master/MasterFilterBar";
 import { ItemList, MasterItem } from "@/components/master/ItemList";
 import { SupplierList, SupplierItem } from "@/components/master/SupplierList";
 import { SupplierModal } from "@/components/master/SupplierModal";
 import { ItemModal } from "@/components/master/ItemModal";
+import { moveItemOrder, setItemSortPosition } from "@/actions/master-data";
 import { RefreshCw, Database } from "lucide-react";
 
 interface MasterViewProps {
@@ -21,6 +22,11 @@ export function MasterView({ initialSuppliers, initialItems }: MasterViewProps) 
   const [activeTab, setActiveTab] = useState<MasterTab>("items");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("ALL");
+  const [items, setItems] = useState<MasterItem[]>(initialItems);
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   // Modals state
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
@@ -35,9 +41,56 @@ export function MasterView({ initialSuppliers, initialItems }: MasterViewProps) 
     });
   };
 
+  // Reordering handlers for walk sequence
+  const handleMoveItem = async (itemId: string, direction: "up" | "down") => {
+    const currentList = [...items];
+    const currentIndex = currentList.findIndex((i) => i.id === itemId);
+    if (currentIndex === -1) return;
+
+    const currentItem = currentList[currentIndex];
+    const supplierId = currentItem.supplierId;
+
+    // Find indices of items with same supplier
+    const sameSupplierIndices = currentList
+      .map((it, idx) => (it.supplierId === supplierId ? idx : -1))
+      .filter((idx) => idx !== -1);
+
+    const posInSupplier = sameSupplierIndices.indexOf(currentIndex);
+    const targetPosInSupplier = direction === "up" ? posInSupplier - 1 : posInSupplier + 1;
+
+    if (targetPosInSupplier < 0 || targetPosInSupplier >= sameSupplierIndices.length) {
+      return;
+    }
+
+    const targetIndex = sameSupplierIndices[targetPosInSupplier];
+
+    // Optimistically swap
+    const temp = currentList[currentIndex];
+    currentList[currentIndex] = currentList[targetIndex];
+    currentList[targetIndex] = temp;
+    setItems(currentList);
+
+    const res = await moveItemOrder(itemId, direction, supplierId);
+    if (!res.success) {
+      setItems(initialItems); // Rollback on error
+    } else {
+      router.refresh();
+    }
+  };
+
+  const handleSetItemPosition = async (itemId: string, targetPosition: number) => {
+    const currentItem = items.find((i) => i.id === itemId);
+    if (!currentItem) return;
+
+    const res = await setItemSortPosition(itemId, targetPosition, currentItem.supplierId);
+    if (res.success) {
+      router.refresh();
+    }
+  };
+
   // Filtered Items (0ms instant client response)
   const filteredItems = useMemo(() => {
-    return initialItems.filter((item) => {
+    return items.filter((item) => {
       const matchSupplier =
         selectedSupplierId === "ALL" || item.supplierId === selectedSupplierId;
 
@@ -53,7 +106,7 @@ export function MasterView({ initialSuppliers, initialItems }: MasterViewProps) 
 
       return matchName || matchNote || matchSupplierName;
     });
-  }, [initialItems, selectedSupplierId, searchQuery]);
+  }, [items, selectedSupplierId, searchQuery]);
 
   // Filtered Suppliers
   const filteredSuppliers = useMemo(() => {
@@ -146,6 +199,8 @@ export function MasterView({ initialSuppliers, initialItems }: MasterViewProps) 
             items={filteredItems}
             onEdit={handleEditItem}
             onRefresh={handleRefresh}
+            onMoveItem={handleMoveItem}
+            onSetItemPosition={handleSetItemPosition}
           />
         ) : (
           <SupplierList

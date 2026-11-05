@@ -21,6 +21,7 @@ model Supplier {
   note           String?
   minOrderAmount Float    @default(0)
   orderDays      String?  // Comma-separated day numbers: 0=อา, 1=จ, 2=อ, 3=พ, 4=พฤ, 5=ศ, 6=ส
+  sortOrder      Int      @default(0)
   items          Item[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -35,12 +36,15 @@ model Item {
   status     String   @default("NONE") // NONE, IN_STOCK, LOW_STOCK, OUT_OF_STOCK
   remain     Float?
   ordered    Float?
+  sortOrder  Int      @default(0)
   supplierId String
   supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([supplierId])
+  @@index([sortOrder])
+  @@index([supplierId, sortOrder])
 }
 
 model SnapshotArchive {

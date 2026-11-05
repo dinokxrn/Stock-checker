@@ -293,3 +293,123 @@ export async function deleteItem(id: string) {
     return { success: false, error: "ไม่สามารถลบรายการสินค้าได้" };
   }
 }
+
+/**
+ * Move an item up or down relative to its adjacent neighbor
+ */
+export async function moveItemOrder(
+  itemId: string,
+  direction: "up" | "down",
+  supplierId?: string
+) {
+  try {
+    const currentItem = await prisma.item.findUnique({
+      where: { id: itemId },
+      select: { id: true, sortOrder: true, supplierId: true },
+    });
+
+    if (!currentItem) {
+      return { success: false, error: "ไม่พบรายการสินค้า" };
+    }
+
+    const targetSupplierId = supplierId || currentItem.supplierId;
+
+    const items = await prisma.item.findMany({
+      where: { supplierId: targetSupplierId },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, sortOrder: true },
+    });
+
+    const currentIndex = items.findIndex((i) => i.id === itemId);
+    if (currentIndex === -1) {
+      return { success: false, error: "ไม่พบตำแหน่งของสินค้า" };
+    }
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) {
+      return { success: true }; // Already at top or bottom
+    }
+
+    const neighbor = items[targetIndex];
+
+    const currentOrder = currentItem.sortOrder;
+    const neighborOrder = neighbor.sortOrder;
+
+    if (currentOrder === neighborOrder) {
+      // Re-index all sequentially to break ties
+      await prisma.$transaction(
+        items.map((it, idx) =>
+          prisma.item.update({
+            where: { id: it.id },
+            data: { sortOrder: idx + 1 },
+          })
+        )
+      );
+      return moveItemOrder(itemId, direction, targetSupplierId);
+    }
+
+    await prisma.$transaction([
+      prisma.item.update({
+        where: { id: currentItem.id },
+        data: { sortOrder: neighborOrder },
+      }),
+      prisma.item.update({
+        where: { id: neighbor.id },
+        data: { sortOrder: currentOrder },
+      }),
+    ]);
+
+    safeRevalidate();
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to move item order:", error);
+    return { success: false, error: "ไม่สามารถสลับลำดับสินค้าได้" };
+  }
+}
+
+/**
+ * Move item to a specific 1-based target position within its supplier
+ */
+export async function setItemSortPosition(
+  itemId: string,
+  targetPosition: number,
+  supplierId?: string
+) {
+  try {
+    const currentItem = await prisma.item.findUnique({
+      where: { id: itemId },
+      select: { id: true, supplierId: true },
+    });
+
+    if (!currentItem) {
+      return { success: false, error: "ไม่พบรายการสินค้า" };
+    }
+
+    const targetSupplierId = supplierId || currentItem.supplierId;
+
+    const items = await prisma.item.findMany({
+      where: { supplierId: targetSupplierId },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true },
+    });
+
+    const filtered = items.filter((i) => i.id !== itemId);
+    const clampedIndex = Math.max(0, Math.min(targetPosition - 1, filtered.length));
+    filtered.splice(clampedIndex, 0, { id: itemId });
+
+    await prisma.$transaction(
+      filtered.map((item, index) =>
+        prisma.item.update({
+          where: { id: item.id },
+          data: { sortOrder: index + 1 },
+        })
+      )
+    );
+
+    safeRevalidate();
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to set item sort position:", error);
+    return { success: false, error: "ไม่สามารถเปลี่ยนลำดับสินค้าได้" };
+  }
+}

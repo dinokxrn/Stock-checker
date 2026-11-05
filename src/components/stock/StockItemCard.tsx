@@ -60,6 +60,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
       ? item.ordered
       : 1
   );
+  const [hasPendingConfirmation, setHasPendingConfirmation] = useState<boolean>(false);
 
   const commitUpdate = useCallback(
     (newStatus: StockStatus, newRemain: number | null, newOrdered: number | null) => {
@@ -67,6 +68,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
         const success = await onUpdate(item.id, newStatus, newRemain, newOrdered);
         if (success) {
           setJustSaved(true);
+          setHasPendingConfirmation(false);
           setTimeout(() => setJustSaved(false), 1500);
         }
       });
@@ -76,53 +78,64 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
 
   // Status Switcher
   const handleStatusChange = (newStatus: StockStatus) => {
-    if (newStatus === localStatus) return;
+    if (newStatus === "NONE") {
+      setLocalStatus("NONE");
+      setHasPendingConfirmation(false);
+      commitUpdate("NONE", null, null);
+      return;
+    }
 
     setLocalStatus(newStatus);
+    setHasPendingConfirmation(true);
 
-    if (newStatus === "NONE") {
-      commitUpdate("NONE", null, null);
-    } else if (newStatus === "IN_STOCK" || newStatus === "LOW_STOCK") {
-      const remainVal = localRemain >= 0 ? localRemain : 0;
-      setLocalRemain(remainVal);
-      commitUpdate(newStatus, remainVal, null);
-    } else if (newStatus === "OUT_OF_STOCK") {
+    if (newStatus === "OUT_OF_STOCK") {
+      if (localOrdered <= 0) setLocalOrdered(1);
+    }
+  };
+
+  // Confirm button handler
+  const handleConfirm = useCallback(() => {
+    if (localStatus === "OUT_OF_STOCK") {
       const orderVal = localOrdered > 0 ? localOrdered : 1;
       setLocalOrdered(orderVal);
       commitUpdate("OUT_OF_STOCK", 0, orderVal);
+    } else if (localStatus === "IN_STOCK" || localStatus === "LOW_STOCK") {
+      const remainVal = localRemain >= 0 ? localRemain : 0;
+      setLocalRemain(remainVal);
+      commitUpdate(localStatus, remainVal, null);
     }
-  };
+  }, [localStatus, localOrdered, localRemain, commitUpdate]);
+
+  const isChanged =
+    hasPendingConfirmation ||
+    localStatus !== item.status ||
+    (localStatus === "OUT_OF_STOCK" && localOrdered !== item.ordered) ||
+    (localStatus !== "OUT_OF_STOCK" && localRemain !== item.remain);
 
   // Stepper handlers for Remain
   const handleRemainStep = (delta: number) => {
     const nextVal = Math.max(0, localRemain + delta);
     setLocalRemain(nextVal);
-    commitUpdate(localStatus, nextVal, null);
+    setHasPendingConfirmation(true);
   };
 
   const handleRemainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0);
     setLocalRemain(val);
-  };
-
-  const handleRemainBlur = () => {
-    commitUpdate(localStatus, localRemain, null);
+    setHasPendingConfirmation(true);
   };
 
   // Stepper handlers for Ordered
   const handleOrderedStep = (delta: number) => {
     const nextVal = Math.max(1, localOrdered + delta);
     setLocalOrdered(nextVal);
-    commitUpdate("OUT_OF_STOCK", 0, nextVal);
+    setHasPendingConfirmation(true);
   };
 
   const handleOrderedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value === "" ? 1 : Math.max(1, Number(e.target.value) || 1);
     setLocalOrdered(val);
-  };
-
-  const handleOrderedBlur = () => {
-    commitUpdate("OUT_OF_STOCK", 0, localOrdered);
+    setHasPendingConfirmation(true);
   };
 
   // Card theme classes based on status
@@ -279,7 +292,12 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                 inputMode="numeric"
                 value={localRemain}
                 onChange={handleRemainChange}
-                onBlur={handleRemainBlur}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleConfirm();
+                  }
+                }}
                 className="w-full min-h-[48px] text-center text-lg font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 pointer-events-none">
@@ -310,6 +328,42 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                 +{step}
               </button>
             ))}
+          </div>
+
+          {/* Confirm Button for Remain */}
+          <div className="pt-1.5">
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isPending}
+              className={`w-full min-h-[46px] py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] touch-manipulation ${
+                isChanged
+                  ? localStatus === "IN_STOCK"
+                    ? "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-emerald-500/25 ring-2 ring-emerald-400/40"
+                    : "bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white shadow-amber-500/25 ring-2 ring-amber-400/40"
+                  : localStatus === "IN_STOCK"
+                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
+                  : "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200"
+              }`}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>กำลังบันทึก...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>
+                    {isChanged ? "ยืนยัน (" : "บันทึกแล้ว ("}
+                    {localStatus === "IN_STOCK"
+                      ? `มีพอ ${localRemain} ${item.unit}`
+                      : `คงเหลือ ${localRemain} ${item.unit}`}
+                    )
+                  </span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}
@@ -347,7 +401,12 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                 inputMode="numeric"
                 value={localOrdered}
                 onChange={handleOrderedChange}
-                onBlur={handleOrderedBlur}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleConfirm();
+                  }
+                }}
                 className="w-full min-h-[48px] text-center text-lg font-bold text-rose-900 bg-white border border-rose-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-sm"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-rose-500 pointer-events-none">
@@ -378,6 +437,34 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                 +{step}
               </button>
             ))}
+          </div>
+
+          {/* Confirm Button for Ordered */}
+          <div className="pt-1.5">
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isPending}
+              className={`w-full min-h-[46px] py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] touch-manipulation ${
+                isChanged
+                  ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-rose-500/25 ring-2 ring-rose-400/40"
+                  : "bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200"
+              }`}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>กำลังบันทึก...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>
+                    {isChanged ? "ยืนยัน (" : "บันทึกแล้ว ("}สั่งซื้อ {localOrdered} {item.unit})
+                  </span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}
