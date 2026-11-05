@@ -55,11 +55,6 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
   const [localRemain, setLocalRemain] = useState<number>(
     item.remain !== null && item.remain !== undefined ? item.remain : 0
   );
-  const [localOrdered, setLocalOrdered] = useState<number>(
-    item.ordered !== null && item.ordered !== undefined && item.ordered > 0
-      ? item.ordered
-      : 1
-  );
   const [hasPendingConfirmation, setHasPendingConfirmation] = useState<boolean>(false);
 
   const commitUpdate = useCallback(
@@ -87,30 +82,23 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
 
     setLocalStatus(newStatus);
     setHasPendingConfirmation(true);
-
-    if (newStatus === "OUT_OF_STOCK") {
-      if (localOrdered <= 0) setLocalOrdered(1);
-    }
   };
 
   // Confirm button handler
   const handleConfirm = useCallback(() => {
     if (localStatus === "OUT_OF_STOCK") {
-      const orderVal = localOrdered > 0 ? localOrdered : 1;
-      setLocalOrdered(orderVal);
-      commitUpdate("OUT_OF_STOCK", 0, orderVal);
+      commitUpdate("OUT_OF_STOCK", 0, 1);
     } else if (localStatus === "IN_STOCK" || localStatus === "LOW_STOCK") {
       const remainVal = localRemain >= 0 ? localRemain : 0;
       setLocalRemain(remainVal);
       commitUpdate(localStatus, remainVal, null);
     }
-  }, [localStatus, localOrdered, localRemain, commitUpdate]);
+  }, [localStatus, localRemain, commitUpdate]);
 
   const isChanged =
     hasPendingConfirmation ||
     localStatus !== item.status ||
-    (localStatus === "OUT_OF_STOCK" && localOrdered !== item.ordered) ||
-    (localStatus !== "OUT_OF_STOCK" && localRemain !== item.remain);
+    (localStatus === "LOW_STOCK" && localRemain !== item.remain);
 
   // Stepper handlers for Remain
   const handleRemainStep = (delta: number) => {
@@ -122,19 +110,6 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
   const handleRemainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0);
     setLocalRemain(val);
-    setHasPendingConfirmation(true);
-  };
-
-  // Stepper handlers for Ordered
-  const handleOrderedStep = (delta: number) => {
-    const nextVal = Math.max(1, localOrdered + delta);
-    setLocalOrdered(nextVal);
-    setHasPendingConfirmation(true);
-  };
-
-  const handleOrderedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value === "" ? 1 : Math.max(1, Number(e.target.value) || 1);
-    setLocalOrdered(val);
     setHasPendingConfirmation(true);
   };
 
@@ -368,104 +343,31 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
         </div>
       )}
 
-      {/* OUT OF STOCK: Mandatory Ordered Quantity + Instant Line Total */}
+      {/* OUT OF STOCK: Confirm button only (no quantity input needed) */}
       {localStatus === "OUT_OF_STOCK" && (
-        <div className="mt-1 p-3 bg-rose-50/50 border border-rose-200 rounded-xl space-y-2.5">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-rose-800 flex items-center gap-1.5">
-              <span>จำนวนที่ต้องสั่งซื้อ (Ordered)</span>
-              <span className="text-rose-600 font-semibold">*จำเป็น</span>
-            </label>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
-              รวมในใบสั่งซื้อ
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Stepper -1 (min 1) */}
-            <button
-              type="button"
-              onClick={() => handleOrderedStep(-1)}
-              disabled={localOrdered <= 1}
-              className="min-h-[48px] min-w-[48px] bg-white hover:bg-rose-100 active:bg-rose-200 disabled:opacity-40 text-rose-700 border border-rose-200 rounded-xl flex items-center justify-center font-bold touch-manipulation transition-colors shadow-sm"
-            >
-              <Minus className="w-5 h-5" />
-            </button>
-
-            {/* Direct Number Input */}
-            <div className="relative flex-1">
-              <input
-                type="number"
-                min="1"
-                step="1"
-                inputMode="numeric"
-                value={localOrdered}
-                onChange={handleOrderedChange}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleConfirm();
-                  }
-                }}
-                className="w-full min-h-[48px] text-center text-lg font-bold text-rose-900 bg-white border border-rose-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-sm"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-rose-500 pointer-events-none">
-                {item.unit}
-              </span>
-            </div>
-
-            {/* Stepper +1 */}
-            <button
-              type="button"
-              onClick={() => handleOrderedStep(1)}
-              className="min-h-[48px] min-w-[48px] bg-white hover:bg-rose-100 active:bg-rose-200 text-rose-700 border border-rose-200 rounded-xl flex items-center justify-center font-bold touch-manipulation transition-colors shadow-sm"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Quick Stepper Pills */}
-          <div className="flex items-center justify-end gap-1.5 pt-0.5">
-            <span className="text-[11px] text-rose-600 mr-1">ปุ่มด่วน:</span>
-            {[5, 10].map((step) => (
-              <button
-                key={step}
-                type="button"
-                onClick={() => handleOrderedStep(step)}
-                className="px-2.5 py-1 min-h-[36px] bg-white hover:bg-rose-100 active:bg-rose-200 text-rose-700 border border-rose-200 text-xs font-bold rounded-lg touch-manipulation transition-colors shadow-sm"
-              >
-                +{step}
-              </button>
-            ))}
-          </div>
-
-          {/* Confirm Button for Ordered */}
-          <div className="pt-1.5">
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={isPending}
-              className={`w-full min-h-[46px] py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] touch-manipulation ${
-                isChanged
-                  ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-rose-500/25 ring-2 ring-rose-400/40"
-                  : "bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200"
-              }`}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>กำลังบันทึก...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>
-                    {isChanged ? "ยืนยัน (" : "บันทึกแล้ว ("}สั่งซื้อ {localOrdered} {item.unit})
-                  </span>
-                </>
-              )}
-            </button>
-          </div>
+        <div className="mt-1 pt-1">
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isPending}
+            className={`w-full min-h-[46px] py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] touch-manipulation ${
+              isChanged
+                ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-rose-500/25 ring-2 ring-rose-400/40"
+                : "bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200"
+            }`}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>กำลังบันทึก...</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4" />
+                <span>{isChanged ? "ยืนยันสินค้าหมด" : "บันทึกสินค้าหมดแล้ว"}</span>
+              </>
+            )}
+          </button>
         </div>
       )}
 
