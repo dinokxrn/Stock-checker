@@ -56,6 +56,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
     item.remain !== null && item.remain !== undefined ? item.remain : 0
   );
   const [hasPendingConfirmation, setHasPendingConfirmation] = useState<boolean>(false);
+  const [showZeroPrompt, setShowZeroPrompt] = useState<boolean>(false);
 
   const commitUpdate = useCallback(
     (newStatus: StockStatus, newRemain: number | null, newOrdered: number | null) => {
@@ -88,12 +89,38 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
   const handleConfirm = useCallback(() => {
     if (localStatus === "OUT_OF_STOCK") {
       commitUpdate("OUT_OF_STOCK", 0, 1);
-    } else if (localStatus === "IN_STOCK" || localStatus === "LOW_STOCK") {
+    } else if (localStatus === "LOW_STOCK") {
+      const remainVal = localRemain >= 0 ? localRemain : 0;
+      // Prompt user if remain is 0 for LOW_STOCK
+      if (remainVal === 0) {
+        setShowZeroPrompt(true);
+        return;
+      }
+      setLocalRemain(remainVal);
+      commitUpdate("LOW_STOCK", remainVal, null);
+    } else if (localStatus === "IN_STOCK") {
       const remainVal = localRemain >= 0 ? localRemain : 0;
       setLocalRemain(remainVal);
       commitUpdate(localStatus, remainVal, null);
     }
   }, [localStatus, localRemain, commitUpdate]);
+
+  // Zero-remain prompt handlers
+  const handleConvertToOutOfStock = () => {
+    setShowZeroPrompt(false);
+    setLocalStatus("OUT_OF_STOCK");
+    commitUpdate("OUT_OF_STOCK", 0, 1);
+  };
+
+  const handleKeepLowStockZero = () => {
+    setShowZeroPrompt(false);
+    setLocalRemain(0);
+    commitUpdate("LOW_STOCK", 0, null);
+  };
+
+  const handleCancelPrompt = () => {
+    setShowZeroPrompt(false);
+  };
 
   const isChanged =
     hasPendingConfirmation ||
@@ -375,6 +402,58 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
       {localStatus === "NONE" && (
         <div className="text-center py-1 text-[11px] text-slate-400">
           แตะเลือกสถานะเพื่อเริ่มบันทึกการตรวจนับ
+        </div>
+      )}
+
+      {/* 0 Remain Confirmation Popup Modal */}
+      {showZeroPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80 flex items-center justify-center mx-auto shadow-inner">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="text-lg font-bold text-slate-800">
+                จำนวนคงเหลือเป็น 0 {item.unit}
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                สินค้า <strong className="text-slate-900">&quot;{item.name}&quot;</strong> ระบุคงเหลือ 0 {item.unit}
+                <br />
+                ต้องการเปลี่ยนสถานะเป็น <strong className="text-rose-600">&quot;สินค้าหมด&quot;</strong> หรือไม่?
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              {/* Option 1: Convert to Out of Stock */}
+              <button
+                type="button"
+                onClick={handleConvertToOutOfStock}
+                className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-sm shadow-md shadow-rose-500/25 flex items-center justify-center gap-2 transition-all touch-manipulation"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>เปลี่ยนเป็น &quot;สินค้าหมด&quot;</span>
+              </button>
+
+              {/* Option 2: Keep Low Stock */}
+              <button
+                type="button"
+                onClick={handleKeepLowStockZero}
+                className="w-full min-h-[44px] py-2 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs border border-amber-200 transition-colors touch-manipulation"
+              >
+                <span>คงสถานะ &quot;ใกล้หมด (เหลือ 0 {item.unit})&quot;</span>
+              </button>
+
+              {/* Option 3: Cancel to edit number */}
+              <button
+                type="button"
+                onClick={handleCancelPrompt}
+                className="w-full min-h-[40px] py-1.5 px-4 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-colors touch-manipulation"
+              >
+                ยกเลิก (เพื่อปรับจำนวนใหม่)
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
