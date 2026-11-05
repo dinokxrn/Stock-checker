@@ -6,12 +6,15 @@ import { PinKeypad } from "@/components/PinKeypad";
 import { loginWithPin } from "@/actions/auth";
 import { ShieldCheck } from "lucide-react";
 import { DinoLogo } from "@/components/DinoLogo";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useLanguage();
 
   const handleComplete = async (pin: string) => {
     setIsLoading(true);
@@ -24,7 +27,7 @@ function LoginForm() {
         router.push(destination);
         router.refresh();
       } else {
-        setErrorMessage(res.error || "รหัส PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง");
+        setErrorMessage(res.error || t("pin_error"));
       }
     } catch (err) {
       console.error("Login failed:", err);
@@ -36,6 +39,11 @@ function LoginForm() {
 
   return (
     <div className="w-full max-w-sm flex flex-col items-center">
+      {/* Top Language Switcher on Login Page */}
+      <div className="w-full flex justify-end mb-3">
+        <LanguageSwitcher variant="segmented" />
+      </div>
+
       {/* Keypad Container Card with Dino Branding */}
       <div className="w-full bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-6 sm:p-8">
         <PinKeypad
@@ -53,11 +61,11 @@ function LoginForm() {
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-                Dino Stock Checker
+                {t("pin_login_title")}
               </h1>
               <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 justify-center">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>ระบบตรวจนับสต็อกสินค้า</span>
+                <span>{t("pin_login_desc")}</span>
               </p>
             </div>
           }

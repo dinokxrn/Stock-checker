@@ -2,6 +2,7 @@
 
 import { Search, X, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Layers, RotateCcw } from "lucide-react";
 import { getSupplierScheduleStatus } from "@/lib/order-schedule";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface StockStats {
   total: number;
@@ -38,6 +39,7 @@ export function StockFilterBar({
   stats,
   onOpenResetModal,
 }: StockFilterBarProps) {
+  const { t } = useLanguage();
   const percentChecked =
     stats.total > 0 ? Math.round((stats.checked / stats.total) * 100) : 0;
 
@@ -48,11 +50,11 @@ export function StockFilterBar({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-            <span className="text-xs font-bold text-slate-700">ความคืบหน้าการตรวจนับ</span>
+            <span className="text-xs font-bold text-slate-700">{t("counting_progress")}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-xs font-extrabold text-blue-600">
-              {stats.checked} / {stats.total} รายการ ({percentChecked}%)
+              {stats.checked} / {stats.total} {t("items_unit")} ({percentChecked}%)
             </div>
             {onOpenResetModal && (
               <button
@@ -62,7 +64,7 @@ export function StockFilterBar({
                 title="รีเซ็ตและจัดเก็บข้อมูลประจำสัปดาห์"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
-                <span>รีเซ็ต</span>
+                <span>{t("reset_button")}</span>
               </button>
             )}
           </div>
@@ -89,7 +91,7 @@ export function StockFilterBar({
           >
             <div className="text-[10px] text-emerald-700 font-medium flex items-center justify-center gap-0.5">
               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-              <span>มีพอ</span>
+              <span>{t("status_in_stock")}</span>
             </div>
             <div className="text-sm font-extrabold text-emerald-800">{stats.inStock}</div>
           </button>
@@ -105,7 +107,7 @@ export function StockFilterBar({
           >
             <div className="text-[10px] text-amber-700 font-medium flex items-center justify-center gap-0.5">
               <AlertTriangle className="w-3 h-3 text-amber-600" />
-              <span>ใกล้หมด</span>
+              <span>{t("status_low_stock")}</span>
             </div>
             <div className="text-sm font-extrabold text-amber-800">{stats.lowStock}</div>
           </button>
@@ -121,7 +123,7 @@ export function StockFilterBar({
           >
             <div className="text-[10px] text-rose-700 font-medium flex items-center justify-center gap-0.5">
               <XCircle className="w-3 h-3 text-rose-600" />
-              <span>หมด</span>
+              <span>{t("status_out_of_stock")}</span>
             </div>
             <div className="text-sm font-extrabold text-rose-800">{stats.outOfStock}</div>
           </button>
@@ -137,7 +139,7 @@ export function StockFilterBar({
           >
             <div className="text-[10px] text-slate-600 font-medium flex items-center justify-center gap-0.5">
               <HelpCircle className="w-3 h-3 text-slate-500" />
-              <span>ยังไม่นับ</span>
+              <span>{t("status_none")}</span>
             </div>
             <div className="text-sm font-extrabold text-slate-700">{stats.none}</div>
           </button>
@@ -151,7 +153,7 @@ export function StockFilterBar({
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="ค้นหาชื่อสินค้า หรือ หมายเหตุ..."
+          placeholder={t("search_placeholder")}
           className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] touch-manipulation"
         />
         {searchQuery && (

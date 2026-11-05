@@ -4,31 +4,33 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ClipboardCheck, ShoppingCart, Database, History } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   const navItems = [
     {
-      label: "ตรวจนับสต็อก",
+      label: t("nav_stock"),
       href: "/",
       icon: ClipboardCheck,
       isActive: (current: string) => current === "/",
     },
     {
-      label: "สรุปสั่งซื้อ",
+      label: t("nav_order"),
       href: "/dashboard",
       icon: ShoppingCart,
       isActive: (current: string) => current.startsWith("/dashboard"),
     },
     {
-      label: "ข้อมูลหลัก",
+      label: t("nav_master"),
       href: "/master",
       icon: Database,
       isActive: (current: string) => current.startsWith("/master"),
     },
     {
-      label: "ประวัติ",
+      label: t("nav_history"),
       href: "/history",
       icon: History,
       isActive: (current: string) => current.startsWith("/history"),

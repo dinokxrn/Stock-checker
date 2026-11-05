@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,9 +26,11 @@ export default function RootLayout({
   return (
     <html lang="th">
       <body className="antialiased min-h-screen bg-slate-50 text-slate-900 selection:bg-blue-100">
-        <main className="min-h-screen max-w-md mx-auto sm:max-w-xl md:max-w-4xl shadow-sm bg-white min-h-screen flex flex-col">
-          {children}
-        </main>
+        <LanguageProvider>
+          <main className="min-h-screen max-w-md mx-auto sm:max-w-xl md:max-w-4xl shadow-sm bg-white min-h-screen flex flex-col">
+            {children}
+          </main>
+        </LanguageProvider>
       </body>
     </html>
   );

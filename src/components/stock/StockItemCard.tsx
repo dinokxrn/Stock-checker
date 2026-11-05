@@ -15,6 +15,7 @@ import {
   FileText,
 } from "lucide-react";
 import { StockStatus } from "@/actions/stock";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface StockItem {
   id: string;
@@ -46,6 +47,7 @@ interface StockItemCardProps {
 }
 
 export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
+  const { t } = useLanguage();
   const [isPending, startTransition] = useTransition();
   const [justSaved, setJustSaved] = useState(false);
 
@@ -183,13 +185,13 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
             {justSaved && (
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 bg-emerald-100/70 px-2 py-0.5 rounded-full animate-fade-in">
                 <Check className="w-3 h-3" />
-                บันทึกแล้ว
+                {t("saved_badge")}
               </span>
             )}
             {isPending && (
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded-full">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                กำลังซิงค์...
+                {t("syncing_badge")}
               </span>
             )}
           </div>
@@ -204,7 +206,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
 
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold">
               <Tag className="w-3 h-3 text-slate-500" />
-              <span>หน่วย: {item.unit}</span>
+              <span>{t("unit_label")}: {item.unit}</span>
             </span>
 
             {item.unitPrice > 0 && (
@@ -236,7 +238,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
           }`}
         >
           <HelpCircle className="w-4 h-4 shrink-0" />
-          <span className="text-[11px] leading-tight">ยังไม่นับ</span>
+          <span className="text-[11px] leading-tight">{t("status_none")}</span>
         </button>
 
         {/* IN_STOCK Button */}
@@ -250,7 +252,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
           }`}
         >
           <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span className="text-[11px] leading-tight">มีพอ</span>
+          <span className="text-[11px] leading-tight">{t("status_in_stock")}</span>
         </button>
 
         {/* LOW_STOCK Button */}
@@ -264,7 +266,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
           }`}
         >
           <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span className="text-[11px] leading-tight">ใกล้หมด</span>
+          <span className="text-[11px] leading-tight">{t("status_low_stock")}</span>
         </button>
 
         {/* OUT_OF_STOCK Button */}
@@ -278,7 +280,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
           }`}
         >
           <XCircle className="w-4 h-4 shrink-0" />
-          <span className="text-[11px] leading-tight">สินค้าหมด</span>
+          <span className="text-[11px] leading-tight">{t("status_out_of_stock")}</span>
         </button>
       </div>
 
@@ -287,7 +289,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
         <div className="mt-1 p-3 bg-white/90 border border-slate-200/80 rounded-xl space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <span>จำนวนคงเหลือ (Remain)</span>
+              <span>{t("remain_label")}</span>
               <span className="text-slate-400 font-normal">({item.unit})</span>
             </label>
             <span
@@ -297,7 +299,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                   : "bg-amber-100 text-amber-800"
               }`}
             >
-              {localStatus === "IN_STOCK" ? "ไม่ต้องสั่งเพิ่ม" : "สต็อกใกล้หมด"}
+              {localStatus === "IN_STOCK" ? t("in_stock_desc") : t("low_stock_desc")}
             </span>
           </div>
 
@@ -346,7 +348,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
 
           {/* Quick Stepper Pills */}
           <div className="flex items-center justify-end gap-1.5 pt-1">
-            <span className="text-[11px] text-slate-400 mr-1">ปุ่มด่วน:</span>
+            <span className="text-[11px] text-slate-400 mr-1">{t("quick_buttons")}</span>
             {[5, 10].map((step) => (
               <button
                 key={step}
@@ -378,16 +380,16 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
               {isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>กำลังบันทึก...</span>
+                  <span>{t("saving")}</span>
                 </>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
                   <span>
-                    {isChanged ? "ยืนยัน (" : "บันทึกแล้ว ("}
+                    {isChanged ? `${t("confirm_button")} (` : `${t("saved_badge")} (`}
                     {localStatus === "IN_STOCK"
-                      ? `มีพอ ${localRemain} ${item.unit}`
-                      : `คงเหลือ ${localRemain} ${item.unit}`}
+                      ? `${t("status_in_stock")} ${localRemain} ${item.unit}`
+                      : `${t("remain_label")} ${localRemain} ${item.unit}`}
                     )
                   </span>
                 </>
@@ -402,11 +404,11 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
         <div className="mt-1 p-3 bg-white/90 border border-rose-200/80 rounded-xl space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <span>จำนวนที่ต้องการสั่ง (Order Qty)</span>
+              <span>{t("order_qty_label")}</span>
               <span className="text-slate-400 font-normal">({item.unit})</span>
             </label>
             <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
-              สินค้าหมด (ต้องสั่ง)
+              {t("out_of_stock_desc")}
             </span>
           </div>
 
@@ -458,7 +460,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
             <div className="text-xs text-slate-600 font-medium">
               {item.unitPrice > 0 ? (
                 <span>
-                  ยอดสั่งประมาณการ:{" "}
+                  {t("estimated_subtotal")}{" "}
                   <strong className="text-rose-700 font-bold">
                     ฿{(localOrdered * item.unitPrice).toLocaleString("th-TH", {
                       minimumFractionDigits: 0,
@@ -466,13 +468,11 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                     })}
                   </strong>
                 </span>
-              ) : (
-                <span className="text-slate-400 text-[11px]">ไม่มียูนิตไพรซ์</span>
-              )}
+              ) : null}
             </div>
 
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-slate-400 mr-0.5">ปุ่มด่วน:</span>
+              <span className="text-[11px] text-slate-400 mr-0.5">{t("quick_buttons")}</span>
               {[1, 5, 10].map((step) => (
                 <button
                   key={step}
@@ -504,13 +504,13 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
               {isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>กำลังบันทึก...</span>
+                  <span>{t("saving")}</span>
                 </>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
                   <span>
-                    {isChanged ? "ยืนยันการสั่ง (" : "บันทึกสั่งแล้ว ("}
+                    {isChanged ? `${t("confirm_button")} (` : `${t("saved_badge")} (`}
                     {localOrdered} {item.unit}
                     {item.unitPrice > 0 &&
                       ` - ฿${(localOrdered * item.unitPrice).toLocaleString("th-TH", {
@@ -529,7 +529,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
       {/* NONE status hint */}
       {localStatus === "NONE" && (
         <div className="text-center py-1 text-[11px] text-slate-400">
-          แตะเลือกสถานะเพื่อเริ่มบันทึกการตรวจนับ
+          {t("tap_to_count_hint")}
         </div>
       )}
 
