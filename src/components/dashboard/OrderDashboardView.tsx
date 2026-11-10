@@ -79,6 +79,7 @@ type FilterTab = "active" | "out_of_stock" | "low_stock" | "all";
 
 export default function OrderDashboardView({ initialSuppliers }: OrderDashboardViewProps) {
   const { t, lang } = useLanguage();
+  const isEn = lang === "en";
   const [suppliers, setSuppliers] = useState<DashboardSupplier[]>(initialSuppliers);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("active");
@@ -160,7 +161,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     const parsedOrdered = parseFloat(String(editOrdered));
 
     const targetRemain =
-      targetStatus === "LOW_STOCK" || targetStatus === "IN_STOCK"
+      targetStatus === "LOW_STOCK" || targetStatus === "IN_STOCK" || targetStatus === "OUT_OF_STOCK"
         ? !isNaN(parsedRemain) && parsedRemain >= 0 ? parsedRemain : 0
         : null;
 
@@ -213,6 +214,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   // Update ordered quantity on out-of-stock items directly in dashboard
   const handleQuantityChange = (supplierId: string, itemId: string, delta: number) => {
     let targetQty = 1;
+    let targetRemain = 0;
 
     setSuppliers((prev) =>
       prev.map((s) => {
@@ -224,6 +226,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             const current = i.ordered && i.ordered > 0 ? i.ordered : 1;
             const next = Math.max(delta < 0 && current <= 1 ? (current > 0.5 ? 0.5 : 0.1) : 0.1, Math.round((current + delta) * 100) / 100);
             targetQty = next;
+            targetRemain = i.remain !== null && i.remain !== undefined ? i.remain : 0;
             return { ...i, ordered: next };
           }),
         };
@@ -231,7 +234,84 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     );
 
     startTransition(async () => {
-      await updateItemStockStatus(itemId, "OUT_OF_STOCK", 0, targetQty);
+      await updateItemStockStatus(itemId, "OUT_OF_STOCK", targetRemain, targetQty);
+    });
+  };
+
+  // Direct input change for ordered quantity on out-of-stock items
+  const handleDirectQuantityChange = (supplierId: string, itemId: string, val: string) => {
+    const parsed = parseFloat(val);
+    const targetQty = !isNaN(parsed) && parsed > 0 ? parsed : 1;
+    let targetRemain = 0;
+
+    setSuppliers((prev) =>
+      prev.map((s) => {
+        if (s.id !== supplierId) return s;
+        return {
+          ...s,
+          items: s.items.map((i) => {
+            if (i.id !== itemId) return i;
+            targetRemain = i.remain !== null && i.remain !== undefined ? i.remain : 0;
+            return { ...i, ordered: targetQty };
+          }),
+        };
+      })
+    );
+
+    startTransition(async () => {
+      await updateItemStockStatus(itemId, "OUT_OF_STOCK", targetRemain, targetQty);
+    });
+  };
+
+  // Update remain quantity on out-of-stock items directly in dashboard
+  const handleItemRemainChange = (supplierId: string, itemId: string, delta: number) => {
+    let targetRemain = 0;
+    let targetQty = 1;
+
+    setSuppliers((prev) =>
+      prev.map((s) => {
+        if (s.id !== supplierId) return s;
+        return {
+          ...s,
+          items: s.items.map((i) => {
+            if (i.id !== itemId) return i;
+            const current = i.remain !== null && i.remain !== undefined ? i.remain : 0;
+            const next = Math.max(0, Math.round((current + delta) * 100) / 100);
+            targetRemain = next;
+            targetQty = i.ordered && i.ordered > 0 ? i.ordered : 1;
+            return { ...i, remain: next };
+          }),
+        };
+      })
+    );
+
+    startTransition(async () => {
+      await updateItemStockStatus(itemId, "OUT_OF_STOCK", targetRemain, targetQty);
+    });
+  };
+
+  // Direct input change for remain on out-of-stock items
+  const handleDirectRemainChange = (supplierId: string, itemId: string, val: string) => {
+    const parsed = parseFloat(val);
+    const targetRemain = !isNaN(parsed) && parsed >= 0 ? parsed : 0;
+    let targetQty = 1;
+
+    setSuppliers((prev) =>
+      prev.map((s) => {
+        if (s.id !== supplierId) return s;
+        return {
+          ...s,
+          items: s.items.map((i) => {
+            if (i.id !== itemId) return i;
+            targetQty = i.ordered && i.ordered > 0 ? i.ordered : 1;
+            return { ...i, remain: targetRemain };
+          }),
+        };
+      })
+    );
+
+    startTransition(async () => {
+      await updateItemStockStatus(itemId, "OUT_OF_STOCK", targetRemain, targetQty);
     });
   };
 
@@ -340,16 +420,18 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
       `---------------------------------`,
     ];
 
-    if (outOfStockItems.length > 0) {
-      lines.push(isEn ? `🔴 Out of Stock (Must Order):` : `🔴 สินค้าหมด (ต้องสั่ง):`);
-      outOfStockItems.forEach((item, index) => {
-        const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
-        const lineTotal = item.unitPrice * qty;
-        const orderTag = item.isOrdered ? (isEn ? "[✓ Ordered]" : "[✓ สั่งแล้ว]") : (isEn ? "[Pending]" : "[รอสั่ง]");
-        const priceTag = item.unitPrice > 0 ? ` (@ ${formatBaht(item.unitPrice)} = ${formatBaht(lineTotal)})` : "";
-        lines.push(`${index + 1}. ${orderTag} ${item.name} - ${isEn ? "Order" : "สั่ง"} ${qty} ${item.unit}${priceTag}`);
-      });
-    }
+      if (outOfStockItems.length > 0) {
+        lines.push(isEn ? `🔴 Out of Stock (Must Order):` : `🔴 สินค้าหมด (ต้องสั่ง):`);
+        outOfStockItems.forEach((item, index) => {
+          const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
+          const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
+          const lineTotal = item.unitPrice * qty;
+          const orderTag = item.isOrdered ? (isEn ? "[✓ Ordered]" : "[✓ สั่งแล้ว]") : (isEn ? "[Pending]" : "[รอสั่ง]");
+          const remainTag = remain > 0 ? ` (${isEn ? "Remain" : "เหลือ"} ${remain} ${item.unit})` : "";
+          const priceTag = item.unitPrice > 0 ? ` (@ ${formatBaht(item.unitPrice)} = ${formatBaht(lineTotal)})` : "";
+          lines.push(`${index + 1}. ${orderTag} ${item.name} - ${isEn ? "Order" : "สั่ง"} ${qty} ${item.unit}${remainTag}${priceTag}`);
+        });
+      }
 
     if (lowStockItems.length > 0) {
       if (outOfStockItems.length > 0) {
@@ -429,10 +511,12 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
         lines.push(isEn ? `🔴 Out of Stock (Must Order):` : `🔴 สินค้าหมด (ต้องสั่ง):`);
         outOfStock.forEach((item, idx) => {
           const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
+          const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
           const lineTotal = item.unitPrice * qty;
           const orderTag = item.isOrdered ? (isEn ? "[✓ Ordered]" : "[✓ สั่งแล้ว]") : (isEn ? "[Pending]" : "[รอสั่ง]");
+          const remainTag = remain > 0 ? ` (${isEn ? "Remain" : "เหลือ"} ${remain} ${item.unit})` : "";
           const priceTag = item.unitPrice > 0 ? ` (@ ${formatBaht(item.unitPrice)} = ${formatBaht(lineTotal)})` : "";
-          lines.push(`  ${idx + 1}. ${orderTag} ${item.name} - ${isEn ? "Order" : "สั่ง"} ${qty} ${item.unit}${priceTag}`);
+          lines.push(`  ${idx + 1}. ${orderTag} ${item.name} - ${isEn ? "Order" : "สั่ง"} ${qty} ${item.unit}${remainTag}${priceTag}`);
         });
       }
 
@@ -1126,6 +1210,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                         <div className="divide-y divide-slate-200/60 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
                           {outOfStockItems.map((item, idx) => {
                             const qty = item.ordered && item.ordered > 0 ? item.ordered : 1;
+                            const remain = item.remain !== null && item.remain !== undefined ? item.remain : 0;
                             const lineTotal = item.unitPrice * qty;
                             const isOrdered = Boolean(item.isOrdered);
 
@@ -1169,7 +1254,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       {item.name}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-2 mt-0.5 ml-5 text-[11px] text-slate-500">
+                                  <div className="flex items-center gap-2 mt-0.5 ml-5 text-[11px] text-slate-500 flex-wrap">
                                     <span>
                                       {t("price_colon_label")}{" "}
                                       <strong className="text-slate-700">
@@ -1190,39 +1275,82 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                   )}
                                 </div>
 
-                                {/* Controls: Steppers [-] [qty] [+] and Edit Button */}
-                                <div className="shrink-0 flex items-center gap-1.5">
-                                  <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleQuantityChange(supplier.id, item.id, -1)}
-                                      disabled={qty <= 0.1}
-                                      className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 disabled:opacity-30 rounded transition-all touch-manipulation"
-                                      title={t("decrease_qty")}
-                                    >
-                                      <Minus className="w-3 h-3" />
-                                    </button>
-                                    <span className="min-w-[28px] text-center text-xs font-extrabold text-slate-800">
-                                      {qty}
+                                {/* Controls: Steppers for Remain & Order, plus Edit Button */}
+                                <div className="shrink-0 flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
+                                  {/* Remain Input & Stepper */}
+                                  <div className="flex items-center gap-1 bg-amber-50/90 px-1.5 py-1 rounded-xl border border-amber-200">
+                                    <span className="text-[11px] font-bold text-amber-800 whitespace-nowrap">
+                                      {isEn ? "Remain:" : "เหลือ:"}
                                     </span>
                                     <button
                                       type="button"
-                                      onClick={() => handleQuantityChange(supplier.id, item.id, 1)}
-                                      className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 rounded transition-all touch-manipulation"
-                                      title={t("increase_qty")}
+                                      onClick={() => handleItemRemainChange(supplier.id, item.id, -1)}
+                                      disabled={remain <= 0}
+                                      className="w-6 h-6 flex items-center justify-center text-amber-800 hover:bg-amber-100 disabled:opacity-30 rounded transition-all touch-manipulation"
+                                      title={t("decrease_remain")}
+                                    >
+                                      <Minus className="w-3 h-3" />
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="any"
+                                      inputMode="decimal"
+                                      value={remain}
+                                      onChange={(e) => handleDirectRemainChange(supplier.id, item.id, e.target.value)}
+                                      className="w-10 text-center text-xs font-extrabold text-amber-900 bg-white border border-amber-200 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded py-0.5"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleItemRemainChange(supplier.id, item.id, 1)}
+                                      className="w-6 h-6 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded transition-all touch-manipulation"
+                                      title={t("increase_remain")}
                                     >
                                       <Plus className="w-3 h-3" />
                                     </button>
                                   </div>
-                                  <span className="text-[11px] font-bold text-slate-600">
-                                    {item.unit}
-                                  </span>
+
+                                  {/* Order Qty Input & Stepper */}
+                                  <div className="flex items-center gap-1 bg-rose-50/90 px-1.5 py-1 rounded-xl border border-rose-200">
+                                    <span className="text-[11px] font-bold text-rose-700 whitespace-nowrap">
+                                      {isEn ? "Order:" : "สั่ง:"}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuantityChange(supplier.id, item.id, -1)}
+                                      disabled={qty <= 0.1}
+                                      className="w-6 h-6 flex items-center justify-center text-rose-700 hover:bg-rose-100 disabled:opacity-30 rounded transition-all touch-manipulation"
+                                      title={t("decrease_qty")}
+                                    >
+                                      <Minus className="w-3 h-3" />
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min="0.01"
+                                      step="any"
+                                      inputMode="decimal"
+                                      value={qty}
+                                      onChange={(e) => handleDirectQuantityChange(supplier.id, item.id, e.target.value)}
+                                      className="w-10 text-center text-xs font-extrabold text-rose-900 bg-white border border-rose-200 focus:outline-none focus:ring-1 focus:ring-rose-500 rounded py-0.5"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuantityChange(supplier.id, item.id, 1)}
+                                      className="w-6 h-6 flex items-center justify-center text-rose-700 hover:bg-rose-100 rounded transition-all touch-manipulation"
+                                      title={t("increase_qty")}
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                    </button>
+                                    <span className="text-[11px] font-bold text-rose-800 ml-0.5">
+                                      {item.unit}
+                                    </span>
+                                  </div>
 
                                   {/* Edit Button */}
                                   <button
                                     type="button"
                                     onClick={() => handleOpenEdit(item, supplier.name)}
-                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 flex items-center justify-center transition-colors ml-1"
+                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 flex items-center justify-center transition-colors ml-0.5"
                                     title={t("edit_stock_title")}
                                   >
                                     <Pencil className="w-3.5 h-3.5" />
@@ -1304,31 +1432,55 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
 
                                 {/* Controls: Steppers for Remain and Edit Button */}
                                 <div className="shrink-0 flex items-center gap-1.5">
-                                  <div className="flex items-center bg-amber-50 rounded-lg p-0.5 border border-amber-200">
+                                  <div className="flex items-center gap-1 bg-amber-50/90 px-1.5 py-1 rounded-xl border border-amber-200">
+                                    <span className="text-[11px] font-bold text-amber-800 whitespace-nowrap">
+                                      {isEn ? "Remain:" : "เหลือ:"}
+                                    </span>
                                     <button
                                       type="button"
                                       onClick={() => handleRemainChange(supplier.id, item.id, -1)}
                                       disabled={remain <= 0}
-                                      className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 disabled:opacity-30 rounded transition-all touch-manipulation"
+                                      className="w-6 h-6 flex items-center justify-center text-amber-800 hover:bg-amber-100 disabled:opacity-30 rounded transition-all touch-manipulation"
                                       title={t("decrease_remain")}
                                     >
                                       <Minus className="w-3 h-3" />
                                     </button>
-                                    <span className="min-w-[28px] text-center text-xs font-extrabold text-amber-800">
-                                      {remain}
-                                    </span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="any"
+                                      inputMode="decimal"
+                                      value={remain}
+                                      onChange={(e) => {
+                                        const p = parseFloat(e.target.value);
+                                        const nextRemain = !isNaN(p) && p >= 0 ? p : 0;
+                                        setSuppliers((prev) =>
+                                          prev.map((s) => {
+                                            if (s.id !== supplier.id) return s;
+                                            return {
+                                              ...s,
+                                              items: s.items.map((i) => (i.id === item.id ? { ...i, remain: nextRemain } : i)),
+                                            };
+                                          })
+                                        );
+                                        startTransition(async () => {
+                                          await updateItemStockStatus(item.id, "LOW_STOCK", nextRemain, null);
+                                        });
+                                      }}
+                                      className="w-10 text-center text-xs font-extrabold text-amber-900 bg-white border border-amber-200 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded py-0.5"
+                                    />
                                     <button
                                       type="button"
                                       onClick={() => handleRemainChange(supplier.id, item.id, 1)}
-                                      className="w-7 h-7 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded transition-all touch-manipulation"
+                                      className="w-6 h-6 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded transition-all touch-manipulation"
                                       title={t("increase_remain")}
                                     >
                                       <Plus className="w-3 h-3" />
                                     </button>
+                                    <span className="text-[11px] font-bold text-amber-800 ml-0.5">
+                                      {item.unit}
+                                    </span>
                                   </div>
-                                  <span className="text-[11px] font-bold text-amber-800">
-                                    {item.unit}
-                                  </span>
 
                                   {/* Edit Button */}
                                   <button
@@ -1570,53 +1722,100 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
             )}
 
             {editStatus === "OUT_OF_STOCK" && (
-              <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-xl space-y-2">
-                <label className="text-xs font-bold text-rose-900 flex items-center justify-between">
-                  <span>{t("order_qty_label")}</span>
-                  <span className="text-[11px] text-rose-700 font-semibold">{editingItem.unit}</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const cur = parseFloat(String(editOrdered)) || 0;
-                      const next = cur <= 1 ? (cur > 0.5 ? 0.5 : 0.1) : Math.round((cur - 1) * 100) / 100;
-                      setEditOrdered(Math.max(0.1, next));
-                    }}
-                    disabled={(parseFloat(String(editOrdered)) || 0) <= 0.1}
-                    className="w-10 h-10 bg-white border border-rose-200 text-rose-800 font-bold rounded-lg flex items-center justify-center hover:bg-rose-100 disabled:opacity-40"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="any"
-                    inputMode="decimal"
-                    value={editOrdered}
-                    onChange={(e) => setEditOrdered(e.target.value)}
-                    onBlur={() => {
-                      const p = parseFloat(String(editOrdered));
-                      setEditOrdered(!isNaN(p) && p > 0 ? p : 1);
-                    }}
-                    className="flex-1 h-10 text-center font-bold text-base text-slate-800 bg-white border border-rose-200 rounded-lg focus:ring-2 focus:ring-rose-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const cur = parseFloat(String(editOrdered)) || 0;
-                      setEditOrdered(Math.round((cur + 1) * 100) / 100);
-                    }}
-                    className="w-10 h-10 bg-white border border-rose-200 text-rose-800 font-bold rounded-lg flex items-center justify-center hover:bg-rose-100"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                {editingItem.unitPrice > 0 && (
-                  <div className="text-xs text-rose-700 text-right font-medium">
-                    {t("estimated_grand_total")}: <strong>{formatBaht((parseFloat(String(editOrdered)) || 1) * editingItem.unitPrice)}</strong>
+              <div className="space-y-3">
+                {/* Remain Input */}
+                <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl space-y-2">
+                  <label className="text-xs font-bold text-amber-900 flex items-center justify-between">
+                    <span>{t("remain_qty_label")}</span>
+                    <span className="text-[11px] text-amber-700 font-semibold">{editingItem.unit}</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = parseFloat(String(editRemain)) || 0;
+                        setEditRemain(Math.max(0, Math.round((cur - 1) * 100) / 100));
+                      }}
+                      disabled={(parseFloat(String(editRemain)) || 0) <= 0}
+                      className="w-10 h-10 bg-white border border-amber-200 text-amber-800 font-bold rounded-lg flex items-center justify-center hover:bg-amber-100 disabled:opacity-40"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      inputMode="decimal"
+                      value={editRemain}
+                      onChange={(e) => setEditRemain(e.target.value)}
+                      onBlur={() => {
+                        const p = parseFloat(String(editRemain));
+                        setEditRemain(!isNaN(p) && p >= 0 ? p : 0);
+                      }}
+                      className="flex-1 h-10 text-center font-bold text-base text-slate-800 bg-white border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = parseFloat(String(editRemain)) || 0;
+                        setEditRemain(Math.round((cur + 1) * 100) / 100);
+                      }}
+                      className="w-10 h-10 bg-white border border-amber-200 text-amber-800 font-bold rounded-lg flex items-center justify-center hover:bg-amber-100"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
                   </div>
-                )}
+                </div>
+
+                {/* Order Quantity Input */}
+                <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-xl space-y-2">
+                  <label className="text-xs font-bold text-rose-900 flex items-center justify-between">
+                    <span>{t("order_qty_label")}</span>
+                    <span className="text-[11px] text-rose-700 font-semibold">{editingItem.unit}</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = parseFloat(String(editOrdered)) || 0;
+                        const next = cur <= 1 ? (cur > 0.5 ? 0.5 : 0.1) : Math.round((cur - 1) * 100) / 100;
+                        setEditOrdered(Math.max(0.1, next));
+                      }}
+                      disabled={(parseFloat(String(editOrdered)) || 0) <= 0.1}
+                      className="w-10 h-10 bg-white border border-rose-200 text-rose-800 font-bold rounded-lg flex items-center justify-center hover:bg-rose-100 disabled:opacity-40"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="any"
+                      inputMode="decimal"
+                      value={editOrdered}
+                      onChange={(e) => setEditOrdered(e.target.value)}
+                      onBlur={() => {
+                        const p = parseFloat(String(editOrdered));
+                        setEditOrdered(!isNaN(p) && p > 0 ? p : 1);
+                      }}
+                      className="flex-1 h-10 text-center font-bold text-base text-slate-800 bg-white border border-rose-200 rounded-lg focus:ring-2 focus:ring-rose-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = parseFloat(String(editOrdered)) || 0;
+                        setEditOrdered(Math.round((cur + 1) * 100) / 100);
+                      }}
+                      className="w-10 h-10 bg-white border border-rose-200 text-rose-800 font-bold rounded-lg flex items-center justify-center hover:bg-rose-100"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {editingItem.unitPrice > 0 && (
+                    <div className="text-xs text-rose-700 text-right font-medium">
+                      {t("estimated_grand_total")}: <strong>{formatBaht((parseFloat(String(editOrdered)) || 1) * editingItem.unitPrice)}</strong>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

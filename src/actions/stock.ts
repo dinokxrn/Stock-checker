@@ -54,7 +54,10 @@ export async function updateItemStockStatus(
           : 0;
       sanitizedOrdered = null;
     } else if (status === "OUT_OF_STOCK") {
-      sanitizedRemain = 0;
+      sanitizedRemain =
+        remain !== null && remain !== undefined && !isNaN(Number(remain))
+          ? Math.max(0, Number(remain))
+          : 0;
       sanitizedOrdered =
         ordered !== null && ordered !== undefined && !isNaN(Number(ordered)) && Number(ordered) > 0
           ? Number(ordered)
