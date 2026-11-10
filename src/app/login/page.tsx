@@ -4,7 +4,6 @@ import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PinKeypad } from "@/components/PinKeypad";
 import { loginWithPin } from "@/actions/auth";
-import { ShieldCheck } from "lucide-react";
 import { DinoLogo } from "@/components/DinoLogo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -54,19 +53,12 @@ function LoginForm() {
           maxDigits={4}
           header={
             <div className="flex flex-col items-center mb-6 text-center">
-              <div className="relative mb-3">
+              <div className="relative mb-2">
                 <DinoLogo size={80} className="rounded-3xl shadow-xl shadow-emerald-500/20 ring-4 ring-emerald-50" />
                 <span className="absolute -bottom-1 -right-1 bg-amber-400 text-amber-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm border-2 border-white">
                   DINO
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-                {t("pin_login_title")}
-              </h1>
-              <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 justify-center">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{t("pin_login_desc")}</span>
-              </p>
             </div>
           }
         />
