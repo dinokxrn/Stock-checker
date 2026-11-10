@@ -34,6 +34,7 @@ const translations: Record<Language, Record<string, string>> = {
     status_out_of_stock: "สินค้าหมด",
     status_ordered: "สั่งแล้ว",
     status_pending_order: "รอสั่ง",
+    pending_order: "ยังไม่สั่ง",
 
     // Common Buttons & Actions
     cancel: "ยกเลิก",
@@ -370,6 +371,7 @@ const translations: Record<Language, Record<string, string>> = {
     status_out_of_stock: "Out of Stock",
     status_ordered: "Ordered",
     status_pending_order: "Pending Order",
+    pending_order: "Pending Order",
 
     // Common Buttons & Actions
     cancel: "Cancel",

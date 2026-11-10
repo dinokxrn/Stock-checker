@@ -1140,23 +1140,18 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                 <button
                                   type="button"
                                   onClick={() => handleToggleItemOrdered(supplier.id, item.id)}
-                                  className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all touch-manipulation shrink-0 ${
+                                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all touch-manipulation shrink-0 ${
                                     isOrdered
-                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
-                                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
+                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs hover:bg-emerald-200"
+                                      : "bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 border border-slate-200"
                                   }`}
                                   title={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
+                                  aria-label={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
                                 >
                                   {isOrdered ? (
-                                    <>
-                                      <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
-                                      <span>{t("ordered")}</span>
-                                    </>
+                                    <CheckSquare className="w-5 h-5 text-emerald-600 shrink-0" />
                                   ) : (
-                                    <>
-                                      <Square className="w-4 h-4 text-slate-400 shrink-0" />
-                                      <span>{t("pending_order")}</span>
-                                    </>
+                                    <Square className="w-5 h-5 text-slate-400 shrink-0" />
                                   )}
                                 </button>
 
@@ -1267,23 +1262,18 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                 <button
                                   type="button"
                                   onClick={() => handleToggleItemOrdered(supplier.id, item.id)}
-                                  className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all touch-manipulation shrink-0 ${
+                                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all touch-manipulation shrink-0 ${
                                     isOrdered
-                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
-                                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
+                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs hover:bg-emerald-200"
+                                      : "bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 border border-slate-200"
                                   }`}
                                   title={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
+                                  aria-label={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
                                 >
                                   {isOrdered ? (
-                                    <>
-                                      <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
-                                      <span>{t("ordered")}</span>
-                                    </>
+                                    <CheckSquare className="w-5 h-5 text-emerald-600 shrink-0" />
                                   ) : (
-                                    <>
-                                      <Square className="w-4 h-4 text-slate-400 shrink-0" />
-                                      <span>{t("pending_order")}</span>
-                                    </>
+                                    <Square className="w-5 h-5 text-slate-400 shrink-0" />
                                   )}
                                 </button>
 
