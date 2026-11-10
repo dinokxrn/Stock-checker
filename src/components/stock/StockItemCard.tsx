@@ -55,10 +55,10 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
   const [localStatus, setLocalStatus] = useState<StockStatus>(
     (item.status as StockStatus) || "NONE"
   );
-  const [localRemain, setLocalRemain] = useState<number>(
+  const [localRemain, setLocalRemain] = useState<string | number>(
     item.remain !== null && item.remain !== undefined ? item.remain : 0
   );
-  const [localOrdered, setLocalOrdered] = useState<number>(
+  const [localOrdered, setLocalOrdered] = useState<string | number>(
     item.ordered !== null && item.ordered !== undefined && item.ordered > 0 ? item.ordered : 1
   );
   const [hasPendingConfirmation, setHasPendingConfirmation] = useState<boolean>(false);
@@ -94,11 +94,13 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
   // Confirm button handler
   const handleConfirm = useCallback(() => {
     if (localStatus === "OUT_OF_STOCK") {
-      const orderVal = localOrdered >= 1 ? localOrdered : 1;
+      const parsed = parseFloat(String(localOrdered));
+      const orderVal = !isNaN(parsed) && parsed > 0 ? parsed : 1;
       setLocalOrdered(orderVal);
       commitUpdate("OUT_OF_STOCK", 0, orderVal);
     } else if (localStatus === "LOW_STOCK") {
-      const remainVal = localRemain >= 0 ? localRemain : 0;
+      const parsed = parseFloat(String(localRemain));
+      const remainVal = !isNaN(parsed) && parsed >= 0 ? parsed : 0;
       // Prompt user if remain is 0 for LOW_STOCK
       if (remainVal === 0) {
         setShowZeroPrompt(true);
@@ -107,7 +109,8 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
       setLocalRemain(remainVal);
       commitUpdate("LOW_STOCK", remainVal, null);
     } else if (localStatus === "IN_STOCK") {
-      const remainVal = localRemain >= 0 ? localRemain : 0;
+      const parsed = parseFloat(String(localRemain));
+      const remainVal = !isNaN(parsed) && parsed >= 0 ? parsed : 0;
       setLocalRemain(remainVal);
       commitUpdate(localStatus, remainVal, null);
     }
@@ -117,7 +120,9 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
   const handleConvertToOutOfStock = () => {
     setShowZeroPrompt(false);
     setLocalStatus("OUT_OF_STOCK");
-    const orderVal = localOrdered >= 1 ? localOrdered : 1;
+    const parsed = parseFloat(String(localOrdered));
+    const orderVal = !isNaN(parsed) && parsed > 0 ? parsed : 1;
+    setLocalOrdered(orderVal);
     commitUpdate("OUT_OF_STOCK", 0, orderVal);
   };
 
@@ -131,36 +136,50 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
     setShowZeroPrompt(false);
   };
 
+  const parsedRemain = parseFloat(String(localRemain));
+  const parsedOrdered = parseFloat(String(localOrdered));
   const isChanged =
     hasPendingConfirmation ||
     localStatus !== item.status ||
-    (localStatus === "LOW_STOCK" && localRemain !== item.remain) ||
-    (localStatus === "OUT_OF_STOCK" && localOrdered !== item.ordered);
+    (localStatus === "LOW_STOCK" && parsedRemain !== item.remain) ||
+    (localStatus === "OUT_OF_STOCK" && parsedOrdered !== item.ordered);
 
   // Stepper handlers for Remain
   const handleRemainStep = (delta: number) => {
-    const nextVal = Math.max(0, localRemain + delta);
+    const current = parseFloat(String(localRemain)) || 0;
+    const nextVal = Math.max(0, Math.round((current + delta) * 100) / 100);
     setLocalRemain(nextVal);
     setHasPendingConfirmation(true);
   };
 
   const handleRemainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0);
+    const val = e.target.value;
     setLocalRemain(val);
     setHasPendingConfirmation(true);
   };
 
+  const handleRemainBlur = () => {
+    const p = parseFloat(String(localRemain));
+    setLocalRemain(!isNaN(p) && p >= 0 ? p : 0);
+  };
+
   // Stepper handlers for Ordered (when OUT_OF_STOCK)
   const handleOrderedStep = (delta: number) => {
-    const nextVal = Math.max(1, localOrdered + delta);
+    const current = parseFloat(String(localOrdered)) || 0;
+    const nextVal = Math.max(0.1, Math.round((current + delta) * 100) / 100);
     setLocalOrdered(nextVal);
     setHasPendingConfirmation(true);
   };
 
   const handleOrderedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value === "" ? 1 : Math.max(1, Number(e.target.value) || 1);
+    const val = e.target.value;
     setLocalOrdered(val);
     setHasPendingConfirmation(true);
+  };
+
+  const handleOrderedBlur = () => {
+    const p = parseFloat(String(localOrdered));
+    setLocalOrdered(!isNaN(p) && p > 0 ? p : 1);
   };
 
   // Card theme classes based on status
@@ -308,7 +327,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
             <button
               type="button"
               onClick={() => handleRemainStep(-1)}
-              disabled={localRemain <= 0}
+              disabled={(parseFloat(String(localRemain)) || 0) <= 0}
               className="min-h-[48px] min-w-[48px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 text-slate-700 rounded-xl flex items-center justify-center font-bold touch-manipulation transition-colors"
             >
               <Minus className="w-5 h-5" />
@@ -319,10 +338,11 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
               <input
                 type="number"
                 min="0"
-                step="1"
-                inputMode="numeric"
+                step="any"
+                inputMode="decimal"
                 value={localRemain}
                 onChange={handleRemainChange}
+                onBlur={handleRemainBlur}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -349,7 +369,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
           {/* Quick Stepper Pills */}
           <div className="flex items-center justify-end gap-1.5 pt-1">
             <span className="text-[11px] text-slate-400 mr-1">{t("quick_buttons")}</span>
-            {[5, 10].map((step) => (
+            {[0.5, 1, 5, 10].map((step) => (
               <button
                 key={step}
                 type="button"
@@ -417,7 +437,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
             <button
               type="button"
               onClick={() => handleOrderedStep(-1)}
-              disabled={localOrdered <= 1}
+              disabled={(parseFloat(String(localOrdered)) || 0) <= 0.1}
               className="min-h-[48px] min-w-[48px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 text-slate-700 rounded-xl flex items-center justify-center font-bold touch-manipulation transition-colors"
             >
               <Minus className="w-5 h-5" />
@@ -427,11 +447,12 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
             <div className="relative flex-1">
               <input
                 type="number"
-                min="1"
-                step="1"
-                inputMode="numeric"
+                min="0.01"
+                step="any"
+                inputMode="decimal"
                 value={localOrdered}
                 onChange={handleOrderedChange}
+                onBlur={handleOrderedBlur}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -462,7 +483,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                 <span>
                   {t("estimated_subtotal")}{" "}
                   <strong className="text-rose-700 font-bold">
-                    ฿{(localOrdered * item.unitPrice).toLocaleString("th-TH", {
+                    ฿{((parseFloat(String(localOrdered)) || 1) * item.unitPrice).toLocaleString("th-TH", {
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 2,
                     })}
@@ -473,7 +494,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
 
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-slate-400 mr-0.5">{t("quick_buttons")}</span>
-              {[1, 5, 10].map((step) => (
+              {[0.5, 1, 5, 10].map((step) => (
                 <button
                   key={step}
                   type="button"
@@ -513,7 +534,7 @@ export function StockItemCard({ item, onUpdate }: StockItemCardProps) {
                     {isChanged ? `${t("confirm_button")} (` : `${t("saved_badge")} (`}
                     {localOrdered} {item.unit}
                     {item.unitPrice > 0 &&
-                      ` - ฿${(localOrdered * item.unitPrice).toLocaleString("th-TH", {
+                      ` - ฿${((parseFloat(String(localOrdered)) || 1) * item.unitPrice).toLocaleString("th-TH", {
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 2,
                       })}`}

@@ -94,8 +94,8 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
   // Quick Edit Modal State
   const [editingItem, setEditingItem] = useState<EditingStockItem | null>(null);
   const [editStatus, setEditStatus] = useState<StockStatus>("NONE");
-  const [editRemain, setEditRemain] = useState<number>(0);
-  const [editOrdered, setEditOrdered] = useState<number>(1);
+  const [editRemain, setEditRemain] = useState<number | string>(0);
+  const [editOrdered, setEditOrdered] = useState<number | string>(1);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Helper to format currency
@@ -156,8 +156,18 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
     setIsSavingEdit(true);
 
     const targetStatus = editStatus;
-    const targetRemain = targetStatus === "LOW_STOCK" || targetStatus === "IN_STOCK" ? Math.max(0, editRemain) : null;
-    const targetOrdered = targetStatus === "OUT_OF_STOCK" ? Math.max(1, editOrdered) : null;
+    const parsedRemain = parseFloat(String(editRemain));
+    const parsedOrdered = parseFloat(String(editOrdered));
+
+    const targetRemain =
+      targetStatus === "LOW_STOCK" || targetStatus === "IN_STOCK"
+        ? !isNaN(parsedRemain) && parsedRemain >= 0 ? parsedRemain : 0
+        : null;
+
+    const targetOrdered =
+      targetStatus === "OUT_OF_STOCK"
+        ? !isNaN(parsedOrdered) && parsedOrdered > 0 ? parsedOrdered : 1
+        : null;
 
     // Optimistically update local suppliers state
     setSuppliers((prev) =>
@@ -212,7 +222,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
           items: s.items.map((i) => {
             if (i.id !== itemId) return i;
             const current = i.ordered && i.ordered > 0 ? i.ordered : 1;
-            const next = Math.max(1, current + delta);
+            const next = Math.max(delta < 0 && current <= 1 ? (current > 0.5 ? 0.5 : 0.1) : 0.1, Math.round((current + delta) * 100) / 100);
             targetQty = next;
             return { ...i, ordered: next };
           }),
@@ -237,7 +247,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
           items: s.items.map((i) => {
             if (i.id !== itemId) return i;
             const current = i.remain !== null && i.remain !== undefined ? i.remain : 0;
-            const next = Math.max(0, current + delta);
+            const next = Math.max(0, Math.round((current + delta) * 100) / 100);
             targetRemain = next;
             return { ...i, remain: next };
           }),
@@ -1191,7 +1201,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                     <button
                                       type="button"
                                       onClick={() => handleQuantityChange(supplier.id, item.id, -1)}
-                                      disabled={qty <= 1}
+                                      disabled={qty <= 0.1}
                                       className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 disabled:opacity-30 rounded transition-all touch-manipulation"
                                       title={t("decrease_qty")}
                                     >
@@ -1533,8 +1543,11 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setEditRemain((r) => Math.max(0, r - 1))}
-                    disabled={editRemain <= 0}
+                    onClick={() => {
+                      const cur = parseFloat(String(editRemain)) || 0;
+                      setEditRemain(Math.max(0, Math.round((cur - 1) * 100) / 100));
+                    }}
+                    disabled={(parseFloat(String(editRemain)) || 0) <= 0}
                     className="w-10 h-10 bg-white border border-amber-200 text-amber-800 font-bold rounded-lg flex items-center justify-center hover:bg-amber-100 disabled:opacity-40"
                   >
                     <Minus className="w-4 h-4" />
@@ -1542,13 +1555,22 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                   <input
                     type="number"
                     min="0"
+                    step="any"
+                    inputMode="decimal"
                     value={editRemain}
-                    onChange={(e) => setEditRemain(Math.max(0, Number(e.target.value) || 0))}
+                    onChange={(e) => setEditRemain(e.target.value)}
+                    onBlur={() => {
+                      const p = parseFloat(String(editRemain));
+                      setEditRemain(!isNaN(p) && p >= 0 ? p : 0);
+                    }}
                     className="flex-1 h-10 text-center font-bold text-base text-slate-800 bg-white border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500"
                   />
                   <button
                     type="button"
-                    onClick={() => setEditRemain((r) => r + 1)}
+                    onClick={() => {
+                      const cur = parseFloat(String(editRemain)) || 0;
+                      setEditRemain(Math.round((cur + 1) * 100) / 100);
+                    }}
                     className="w-10 h-10 bg-white border border-amber-200 text-amber-800 font-bold rounded-lg flex items-center justify-center hover:bg-amber-100"
                   >
                     <Plus className="w-4 h-4" />
@@ -1566,22 +1588,35 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setEditOrdered((o) => Math.max(1, o - 1))}
-                    disabled={editOrdered <= 1}
+                    onClick={() => {
+                      const cur = parseFloat(String(editOrdered)) || 0;
+                      const next = cur <= 1 ? (cur > 0.5 ? 0.5 : 0.1) : Math.round((cur - 1) * 100) / 100;
+                      setEditOrdered(Math.max(0.1, next));
+                    }}
+                    disabled={(parseFloat(String(editOrdered)) || 0) <= 0.1}
                     className="w-10 h-10 bg-white border border-rose-200 text-rose-800 font-bold rounded-lg flex items-center justify-center hover:bg-rose-100 disabled:opacity-40"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
                   <input
                     type="number"
-                    min="1"
+                    min="0.01"
+                    step="any"
+                    inputMode="decimal"
                     value={editOrdered}
-                    onChange={(e) => setEditOrdered(Math.max(1, Number(e.target.value) || 1))}
+                    onChange={(e) => setEditOrdered(e.target.value)}
+                    onBlur={() => {
+                      const p = parseFloat(String(editOrdered));
+                      setEditOrdered(!isNaN(p) && p > 0 ? p : 1);
+                    }}
                     className="flex-1 h-10 text-center font-bold text-base text-slate-800 bg-white border border-rose-200 rounded-lg focus:ring-2 focus:ring-rose-500"
                   />
                   <button
                     type="button"
-                    onClick={() => setEditOrdered((o) => o + 1)}
+                    onClick={() => {
+                      const cur = parseFloat(String(editOrdered)) || 0;
+                      setEditOrdered(Math.round((cur + 1) * 100) / 100);
+                    }}
                     className="w-10 h-10 bg-white border border-rose-200 text-rose-800 font-bold rounded-lg flex items-center justify-center hover:bg-rose-100"
                   >
                     <Plus className="w-4 h-4" />
@@ -1589,7 +1624,7 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                 </div>
                 {editingItem.unitPrice > 0 && (
                   <div className="text-xs text-rose-700 text-right font-medium">
-                    {t("estimated_grand_total")}: <strong>{formatBaht(editOrdered * editingItem.unitPrice)}</strong>
+                    {t("estimated_grand_total")}: <strong>{formatBaht((parseFloat(String(editOrdered)) || 1) * editingItem.unitPrice)}</strong>
                   </div>
                 )}
               </div>
