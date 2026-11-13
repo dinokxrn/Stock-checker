@@ -1217,44 +1217,69 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                             return (
                               <div
                                 key={item.id}
-                                className={`p-3 flex items-center justify-between gap-2.5 transition-colors ${
+                                className={`p-3 flex flex-col gap-2 transition-colors ${
                                   isOrdered ? "bg-emerald-50/30" : "hover:bg-slate-50/50"
                                 }`}
                               >
-                                {/* Checkbox "สั่งแล้ว" */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleItemOrdered(supplier.id, item.id)}
-                                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all touch-manipulation shrink-0 ${
-                                    isOrdered
-                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs hover:bg-emerald-200"
-                                      : "bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 border border-slate-200"
-                                  }`}
-                                  title={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
-                                  aria-label={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
-                                >
-                                  {isOrdered ? (
-                                    <CheckSquare className="w-5 h-5 text-emerald-600 shrink-0" />
-                                  ) : (
-                                    <Square className="w-5 h-5 text-slate-400 shrink-0" />
-                                  )}
-                                </button>
-
-                                {/* Name & Price Info */}
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-medium text-slate-400 w-4">
-                                      {idx + 1}.
-                                    </span>
-                                    <span
-                                      className={`text-xs font-bold truncate ${
-                                        isOrdered ? "text-slate-500 line-through" : "text-slate-800"
+                                {/* Top line: Checkbox, Name, and Edit button */}
+                                <div className="flex items-start justify-between gap-2.5">
+                                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                                    {/* Checkbox "สั่งแล้ว" */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleItemOrdered(supplier.id, item.id)}
+                                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all touch-manipulation shrink-0 mt-0.5 ${
+                                        isOrdered
+                                          ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs hover:bg-emerald-200"
+                                          : "bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 border border-slate-200"
                                       }`}
+                                      title={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
+                                      aria-label={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
                                     >
-                                      {item.name}
-                                    </span>
+                                      {isOrdered ? (
+                                        <CheckSquare className="w-5 h-5 text-emerald-600 shrink-0" />
+                                      ) : (
+                                        <Square className="w-5 h-5 text-slate-400 shrink-0" />
+                                      )}
+                                    </button>
+
+                                    {/* Name & Note */}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                                        <span className="text-xs font-semibold text-slate-400">
+                                          {idx + 1}.
+                                        </span>
+                                        <span
+                                          className={`text-sm font-bold leading-snug break-words ${
+                                            isOrdered ? "text-slate-400 line-through" : "text-slate-800"
+                                          }`}
+                                        >
+                                          {item.name}
+                                        </span>
+                                      </div>
+                                      {item.note && (
+                                        <div className="text-[11px] text-slate-400 mt-0.5">
+                                          {item.note}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2 mt-0.5 ml-5 text-[11px] text-slate-500 flex-wrap">
+
+                                  {/* Edit Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEdit(item, supplier.name)}
+                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 flex items-center justify-center transition-colors shrink-0"
+                                    title={t("edit_stock_title")}
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
+                                {/* Bottom line: Price on left, Steppers on right */}
+                                <div className="flex items-center justify-between gap-2 flex-wrap pl-11 pt-0.5">
+                                  {/* Price */}
+                                  <div className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
                                     <span>
                                       {t("price_colon_label")}{" "}
                                       <strong className="text-slate-700">
@@ -1268,93 +1293,78 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       </span>
                                     )}
                                   </div>
-                                  {item.note && (
-                                    <div className="text-[11px] text-slate-400 ml-5 mt-0.5">
-                                      {item.note}
+
+                                  {/* Steppers: Remain & Order */}
+                                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                    {/* Remain Input & Stepper */}
+                                    <div className="flex items-center gap-1 bg-amber-50/90 px-1.5 py-1 rounded-xl border border-amber-200">
+                                      <span className="text-[11px] font-bold text-amber-800 whitespace-nowrap">
+                                        {isEn ? "Remain:" : "เหลือ:"}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleItemRemainChange(supplier.id, item.id, -1)}
+                                        disabled={remain <= 0}
+                                        className="w-6 h-6 flex items-center justify-center text-amber-800 hover:bg-amber-100 disabled:opacity-30 rounded transition-all touch-manipulation"
+                                        title={t("decrease_remain")}
+                                      >
+                                        <Minus className="w-3 h-3" />
+                                      </button>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        inputMode="decimal"
+                                        value={remain}
+                                        onChange={(e) => handleDirectRemainChange(supplier.id, item.id, e.target.value)}
+                                        className="w-10 text-center text-xs font-extrabold text-amber-900 bg-white border border-amber-200 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded py-0.5"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleItemRemainChange(supplier.id, item.id, 1)}
+                                        className="w-6 h-6 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded transition-all touch-manipulation"
+                                        title={t("increase_remain")}
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </button>
                                     </div>
-                                  )}
-                                </div>
 
-                                {/* Controls: Steppers for Remain & Order, plus Edit Button */}
-                                <div className="shrink-0 flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
-                                  {/* Remain Input & Stepper */}
-                                  <div className="flex items-center gap-1 bg-amber-50/90 px-1.5 py-1 rounded-xl border border-amber-200">
-                                    <span className="text-[11px] font-bold text-amber-800 whitespace-nowrap">
-                                      {isEn ? "Remain:" : "เหลือ:"}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleItemRemainChange(supplier.id, item.id, -1)}
-                                      disabled={remain <= 0}
-                                      className="w-6 h-6 flex items-center justify-center text-amber-800 hover:bg-amber-100 disabled:opacity-30 rounded transition-all touch-manipulation"
-                                      title={t("decrease_remain")}
-                                    >
-                                      <Minus className="w-3 h-3" />
-                                    </button>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      step="any"
-                                      inputMode="decimal"
-                                      value={remain}
-                                      onChange={(e) => handleDirectRemainChange(supplier.id, item.id, e.target.value)}
-                                      className="w-10 text-center text-xs font-extrabold text-amber-900 bg-white border border-amber-200 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded py-0.5"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => handleItemRemainChange(supplier.id, item.id, 1)}
-                                      className="w-6 h-6 flex items-center justify-center text-amber-800 hover:bg-amber-100 rounded transition-all touch-manipulation"
-                                      title={t("increase_remain")}
-                                    >
-                                      <Plus className="w-3 h-3" />
-                                    </button>
+                                    {/* Order Qty Input & Stepper */}
+                                    <div className="flex items-center gap-1 bg-rose-50/90 px-1.5 py-1 rounded-xl border border-rose-200">
+                                      <span className="text-[11px] font-bold text-rose-700 whitespace-nowrap">
+                                        {isEn ? "Order:" : "สั่ง:"}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuantityChange(supplier.id, item.id, -1)}
+                                        disabled={qty <= 0.1}
+                                        className="w-6 h-6 flex items-center justify-center text-rose-700 hover:bg-rose-100 disabled:opacity-30 rounded transition-all touch-manipulation"
+                                        title={t("decrease_qty")}
+                                      >
+                                        <Minus className="w-3 h-3" />
+                                      </button>
+                                      <input
+                                        type="number"
+                                        min="0.01"
+                                        step="any"
+                                        inputMode="decimal"
+                                        value={qty}
+                                        onChange={(e) => handleDirectQuantityChange(supplier.id, item.id, e.target.value)}
+                                        className="w-10 text-center text-xs font-extrabold text-rose-900 bg-white border border-rose-200 focus:outline-none focus:ring-1 focus:ring-rose-500 rounded py-0.5"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuantityChange(supplier.id, item.id, 1)}
+                                        className="w-6 h-6 flex items-center justify-center text-rose-700 hover:bg-rose-100 rounded transition-all touch-manipulation"
+                                        title={t("increase_qty")}
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </button>
+                                      <span className="text-[11px] font-bold text-rose-800 ml-0.5">
+                                        {item.unit}
+                                      </span>
+                                    </div>
                                   </div>
-
-                                  {/* Order Qty Input & Stepper */}
-                                  <div className="flex items-center gap-1 bg-rose-50/90 px-1.5 py-1 rounded-xl border border-rose-200">
-                                    <span className="text-[11px] font-bold text-rose-700 whitespace-nowrap">
-                                      {isEn ? "Order:" : "สั่ง:"}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleQuantityChange(supplier.id, item.id, -1)}
-                                      disabled={qty <= 0.1}
-                                      className="w-6 h-6 flex items-center justify-center text-rose-700 hover:bg-rose-100 disabled:opacity-30 rounded transition-all touch-manipulation"
-                                      title={t("decrease_qty")}
-                                    >
-                                      <Minus className="w-3 h-3" />
-                                    </button>
-                                    <input
-                                      type="number"
-                                      min="0.01"
-                                      step="any"
-                                      inputMode="decimal"
-                                      value={qty}
-                                      onChange={(e) => handleDirectQuantityChange(supplier.id, item.id, e.target.value)}
-                                      className="w-10 text-center text-xs font-extrabold text-rose-900 bg-white border border-rose-200 focus:outline-none focus:ring-1 focus:ring-rose-500 rounded py-0.5"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => handleQuantityChange(supplier.id, item.id, 1)}
-                                      className="w-6 h-6 flex items-center justify-center text-rose-700 hover:bg-rose-100 rounded transition-all touch-manipulation"
-                                      title={t("increase_qty")}
-                                    >
-                                      <Plus className="w-3 h-3" />
-                                    </button>
-                                    <span className="text-[11px] font-bold text-rose-800 ml-0.5">
-                                      {item.unit}
-                                    </span>
-                                  </div>
-
-                                  {/* Edit Button */}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEdit(item, supplier.name)}
-                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 flex items-center justify-center transition-colors ml-0.5"
-                                    title={t("edit_stock_title")}
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </button>
                                 </div>
                               </div>
                             );
@@ -1382,57 +1392,79 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                             return (
                               <div
                                 key={item.id}
-                                className={`p-3 flex items-center justify-between gap-2.5 transition-colors ${
+                                className={`p-3 flex flex-col gap-2 transition-colors ${
                                   isOrdered ? "bg-emerald-50/30" : "hover:bg-slate-50/50"
                                 }`}
                               >
-                                {/* Checkbox "สั่งแล้ว" */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleItemOrdered(supplier.id, item.id)}
-                                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all touch-manipulation shrink-0 ${
-                                    isOrdered
-                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs hover:bg-emerald-200"
-                                      : "bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 border border-slate-200"
-                                  }`}
-                                  title={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
-                                  aria-label={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
-                                >
-                                  {isOrdered ? (
-                                    <CheckSquare className="w-5 h-5 text-emerald-600 shrink-0" />
-                                  ) : (
-                                    <Square className="w-5 h-5 text-slate-400 shrink-0" />
-                                  )}
-                                </button>
-
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-medium text-slate-400 w-4">
-                                      {idx + 1}.
-                                    </span>
-                                    <span
-                                      className={`text-xs font-bold truncate ${
-                                        isOrdered ? "text-slate-500 line-through" : "text-slate-800"
+                                {/* Top line: Checkbox, Name, and Edit button */}
+                                <div className="flex items-start justify-between gap-2.5">
+                                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                                    {/* Checkbox "สั่งแล้ว" */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleItemOrdered(supplier.id, item.id)}
+                                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all touch-manipulation shrink-0 mt-0.5 ${
+                                        isOrdered
+                                          ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs hover:bg-emerald-200"
+                                          : "bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 border border-slate-200"
                                       }`}
+                                      title={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
+                                      aria-label={isOrdered ? t("unmark_all_ordered") : t("mark_all_ordered")}
                                     >
-                                      {item.name}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-0.5 ml-5 text-[11px] text-slate-500">
-                                    <span>
-                                      {t("price_colon_label")} {item.unitPrice > 0 ? formatBaht(item.unitPrice) : "0"} / {item.unit}
-                                    </span>
-                                  </div>
-                                  {item.note && (
-                                    <div className="text-[11px] text-slate-400 ml-5 mt-0.5">
-                                      {item.note}
+                                      {isOrdered ? (
+                                        <CheckSquare className="w-5 h-5 text-emerald-600 shrink-0" />
+                                      ) : (
+                                        <Square className="w-5 h-5 text-slate-400 shrink-0" />
+                                      )}
+                                    </button>
+
+                                    {/* Name & Note */}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                                        <span className="text-xs font-semibold text-slate-400">
+                                          {idx + 1}.
+                                        </span>
+                                        <span
+                                          className={`text-sm font-bold leading-snug break-words ${
+                                            isOrdered ? "text-slate-400 line-through" : "text-slate-800"
+                                          }`}
+                                        >
+                                          {item.name}
+                                        </span>
+                                      </div>
+                                      {item.note && (
+                                        <div className="text-[11px] text-slate-400 mt-0.5">
+                                          {item.note}
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
+                                  </div>
+
+                                  {/* Edit Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEdit(item, supplier.name)}
+                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 flex items-center justify-center transition-colors shrink-0"
+                                    title={t("edit_stock_title")}
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
 
-                                {/* Controls: Steppers for Remain and Edit Button */}
-                                <div className="shrink-0 flex items-center gap-1.5">
-                                  <div className="flex items-center gap-1 bg-amber-50/90 px-1.5 py-1 rounded-xl border border-amber-200">
+                                {/* Bottom line: Price on left, Remain Stepper on right */}
+                                <div className="flex items-center justify-between gap-2 flex-wrap pl-11 pt-0.5">
+                                  <div className="text-[11px] text-slate-500">
+                                    <span>
+                                      {t("price_colon_label")}{" "}
+                                      <strong className="text-slate-700">
+                                        {item.unitPrice > 0 ? formatBaht(item.unitPrice) : "0"}
+                                      </strong>{" "}
+                                      / {item.unit}
+                                    </span>
+                                  </div>
+
+                                  {/* Stepper for Remain */}
+                                  <div className="flex items-center gap-1 bg-amber-50/90 px-1.5 py-1 rounded-xl border border-amber-200 shrink-0">
                                     <span className="text-[11px] font-bold text-amber-800 whitespace-nowrap">
                                       {isEn ? "Remain:" : "เหลือ:"}
                                     </span>
@@ -1481,16 +1513,6 @@ export default function OrderDashboardView({ initialSuppliers }: OrderDashboardV
                                       {item.unit}
                                     </span>
                                   </div>
-
-                                  {/* Edit Button */}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEdit(item, supplier.name)}
-                                    className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 flex items-center justify-center transition-colors ml-1"
-                                    title={t("edit_stock_title")}
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </button>
                                 </div>
                               </div>
                             );
